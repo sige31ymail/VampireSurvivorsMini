@@ -186,6 +186,7 @@ public class Enemy : MonoBehaviour
     {
         GameState.Enemies.Remove(this);
         GameState.KillCount++;
+        AudioManager.PlayDie();
 
         // 敵の色とサイズに応じた破片を飛ばす（標準サイズ0.5を基準に倍率計算）
         DeathParticle.Burst(transform.position, baseColor, transform.localScale.x / 0.5f);

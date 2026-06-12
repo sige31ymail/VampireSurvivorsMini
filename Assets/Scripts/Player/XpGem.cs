@@ -35,6 +35,7 @@ public class XpGem : MonoBehaviour
 
         if (dist < 0.5f)
         {
+            AudioManager.PlayXp();
             player.GainXp(value);
             Destroy(gameObject);
         }

@@ -98,10 +98,12 @@ public class Player : MonoBehaviour
         if (invincibleTimer > 0f || GameState.GameOver) return;
         hp -= Mathf.Max(1, damage - armor); // 最低1ダメージ
         invincibleTimer = 0.5f;
+        AudioManager.PlayHit();
         if (hp <= 0)
         {
             hp = 0;
             GameState.GameOver = true;
+            AudioManager.PlayGameOver();
         }
     }
 
@@ -119,6 +121,7 @@ public class Player : MonoBehaviour
             level++;
             xpToNext = 5 + level * 3;
             pendingChoices++; // 3択を表示（複数レベルアップ時は連続で表示）
+            AudioManager.PlayLevelUp();
         }
     }
 

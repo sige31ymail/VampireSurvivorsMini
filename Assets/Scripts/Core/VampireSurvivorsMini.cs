@@ -36,6 +36,12 @@ public class VampireSurvivorsMini : MonoBehaviour
         CreateSprites();
         SetupCamera();
 
+        // AudioManager（シーンをまたいで永続）
+        if (AudioManager.Instance == null)
+            new GameObject("AudioManager").AddComponent<AudioManager>();
+        else
+            AudioManager.Instance.RestartBgm();
+
         // プレイヤー生成
         var playerGo = new GameObject("Player");
         var sr = playerGo.AddComponent<SpriteRenderer>();

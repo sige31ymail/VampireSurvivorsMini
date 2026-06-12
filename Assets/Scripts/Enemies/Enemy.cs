@@ -13,6 +13,8 @@ public class Enemy : MonoBehaviour
     SpriteRenderer sr;
     Color baseColor;
     float flashTimer; // 被弾時の白フラッシュ残り時間
+    SpriteRenderer[] allRenderers;
+    Color[] allBaseColors;
 
     // ダッシャー用ステートマシン
     enum DashState { Approach, Telegraph, Dash, Cooldown }
@@ -38,6 +40,7 @@ public class Enemy : MonoBehaviour
         switch (type)
         {
             case EnemyType.Chaser:
+                sr.sprite = VampireSurvivorsMini.CircleSprite;
                 sr.color = new Color(1f, 0.35f, 0.35f);
                 go.transform.localScale = Vector3.one * 0.5f;
                 e.hp = 20 + (int)(difficulty * 10f);
@@ -47,6 +50,7 @@ public class Enemy : MonoBehaviour
                 break;
 
             case EnemyType.Runner:
+                sr.sprite = VampireSurvivorsMini.CircleSprite;
                 sr.color = new Color(1f, 0.75f, 0.2f);
                 go.transform.localScale = Vector3.one * 0.35f;
                 e.hp = 8 + (int)(difficulty * 4f);
@@ -75,6 +79,7 @@ public class Enemy : MonoBehaviour
                 break;
 
             case EnemyType.Boss:
+                sr.sprite = VampireSurvivorsMini.CircleSprite;
                 sr.color = new Color(0.7f, 0.2f, 1f);
                 go.transform.localScale = Vector3.one * 1.6f;
                 e.hp = 400 + (int)(difficulty * 250f);
@@ -85,6 +90,14 @@ public class Enemy : MonoBehaviour
         }
         e.baseColor = sr.color;
 
+        go.AddComponent<EnemyVisuals>().Build(type);
+
+        var srs = go.GetComponentsInChildren<SpriteRenderer>(true);
+        e.allRenderers  = srs;
+        e.allBaseColors = new Color[srs.Length];
+        for (int i = 0; i < srs.Length; i++)
+            e.allBaseColors[i] = srs[i].color;
+
         GameState.Enemies.Add(e);
         return e;
     }
@@ -94,11 +107,13 @@ public class Enemy : MonoBehaviour
         if (GameState.GameOver || player == null) return;
         if (Time.timeScale == 0f) return; // レベルアップ選択中は停止
 
-        // 被弾フラッシュ：一定時間白くして元の色に戻す
+        // 被弾フラッシュ：全パーツを一時的に白くして元の色に戻す
         if (flashTimer > 0f)
         {
             flashTimer -= Time.deltaTime;
-            sr.color = flashTimer > 0f ? Color.white : baseColor;
+            bool white = flashTimer > 0f;
+            for (int i = 0; i < allRenderers.Length; i++)
+                allRenderers[i].color = white ? Color.white : allBaseColors[i];
         }
 
         if (type == EnemyType.Dasher) UpdateDasher();

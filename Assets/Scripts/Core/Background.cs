@@ -1,43 +1,37 @@
 using UnityEngine;
 
 /// <summary>
-/// グリッド背景。SpriteRenderer で描画し、タイルグリッドにスナップして追従する。
-/// タイル境界でスナップするため継ぎ目が見えない。
+/// グラス画像をタイリングして無限スクロール背景を作る。
+/// Resources/Tiles/grass.png が見つからない場合は旧来のグリッドにフォールバック。
 /// </summary>
 public class Background : MonoBehaviour
 {
-    const float TileWorldSize = 2f;  // グリッド1マス = 2ワールド単位
-    const int   TilesAcross  = 16;   // スプライト1枚に含むタイル数（縦横）
-    const int   TexPerTile   = 32;   // タイル1マスのピクセル数
+    const float TileWorldSize = 2f;
 
     void Start()
     {
-        int total = TexPerTile * TilesAcross;
-        var tex = new Texture2D(total, total, TextureFormat.RGB24, false);
+        var tex = Resources.Load<Texture2D>("Tiles/grass");
+        if (tex != null)
+            BuildTiled(tex);
+        else
+            BuildFallbackGrid();
+    }
 
-        var bg   = new Color(0.05f, 0.05f, 0.10f);
-        var line = new Color(0.22f, 0.22f, 0.34f);
-
-        for (int y = 0; y < total; y++)
-        for (int x = 0; x < total; x++)
-        {
-            // 2ピクセル幅のグリッド線
-            bool isLine = x % TexPerTile < 2 || y % TexPerTile < 2;
-            tex.SetPixel(x, y, isLine ? line : bg);
-        }
-        tex.Apply();
+    void BuildTiled(Texture2D tex)
+    {
         tex.filterMode = FilterMode.Point;
 
-        float ppu = TexPerTile / TileWorldSize; // pixels per unit
-        var sprite = Sprite.Create(tex,
-            new Rect(0, 0, total, total),
-            Vector2.one * 0.5f,
-            ppu);
+        // テクスチャの横幅が TileWorldSize ワールド単位になるよう PPU を計算
+        float ppu    = tex.width / TileWorldSize;
+        var   sprite = Sprite.Create(tex,
+            new Rect(0, 0, tex.width, tex.height),
+            Vector2.one * 0.5f, ppu);
 
         var sr = gameObject.AddComponent<SpriteRenderer>();
         sr.sprite       = sprite;
+        sr.drawMode     = SpriteDrawMode.Tiled;
+        sr.size         = new Vector2(52f, 52f); // 画面外までカバー
         sr.sortingOrder = -100;
-        sr.color        = Color.white;
     }
 
     void LateUpdate()
@@ -45,11 +39,40 @@ public class Background : MonoBehaviour
         var cam = Camera.main;
         if (cam == null) return;
 
+        // タイルグリッド単位でスナップ → 継ぎ目なく追従
         var p = cam.transform.position;
-        // タイルグリッド単位でスナップ → グリッド線の位置が変わらず継ぎ目なし
         p.x = Mathf.Round(p.x / TileWorldSize) * TileWorldSize;
         p.y = Mathf.Round(p.y / TileWorldSize) * TileWorldSize;
         p.z = 0f;
         transform.position = p;
+    }
+
+    // ── フォールバック：コード生成グリッド ──────
+    void BuildFallbackGrid()
+    {
+        const int TexPerTile = 32;
+        const int TilesAcross = 16;
+        int total = TexPerTile * TilesAcross;
+
+        var tex  = new Texture2D(total, total, TextureFormat.RGB24, false);
+        var bg   = new Color(0.05f, 0.05f, 0.10f);
+        var line = new Color(0.22f, 0.22f, 0.34f);
+
+        for (int y = 0; y < total; y++)
+        for (int x = 0; x < total; x++)
+        {
+            bool isLine = x % TexPerTile < 2 || y % TexPerTile < 2;
+            tex.SetPixel(x, y, isLine ? line : bg);
+        }
+        tex.Apply();
+        tex.filterMode = FilterMode.Point;
+
+        float ppu    = TexPerTile / TileWorldSize;
+        var   sprite = Sprite.Create(tex,
+            new Rect(0, 0, total, total), Vector2.one * 0.5f, ppu);
+
+        var sr = gameObject.AddComponent<SpriteRenderer>();
+        sr.sprite       = sprite;
+        sr.sortingOrder = -100;
     }
 }

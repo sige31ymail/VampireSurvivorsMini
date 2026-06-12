@@ -154,6 +154,12 @@ public class Player : MonoBehaviour
             pool.Add(new UpgradeOption("新武器: " + w.Name, w.Description,
                 p => p.weapons.Add(w)));
         }
+        if (!ownedTypes.Contains(typeof(CrossBoltWeapon)))
+        {
+            var w = new CrossBoltWeapon();
+            pool.Add(new UpgradeOption("新武器: " + w.Name, w.Description,
+                p => p.weapons.Add(w)));
+        }
 
         // 汎用強化（武器が全部MAXでも選択肢が3つ揃うようにする）
         pool.Add(new UpgradeOption("HP回復", "HPを30回復する",

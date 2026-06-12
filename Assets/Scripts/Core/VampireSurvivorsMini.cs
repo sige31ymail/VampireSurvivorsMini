@@ -44,6 +44,7 @@ public class VampireSurvivorsMini : MonoBehaviour
 
         // 背景
         new GameObject("Background").AddComponent<Background>();
+        new GameObject("AmbientFx").AddComponent<AmbientFx>();
 
         // プレイヤー生成
         var playerGo = new GameObject("Player");

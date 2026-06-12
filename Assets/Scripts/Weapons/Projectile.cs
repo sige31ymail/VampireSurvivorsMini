@@ -10,14 +10,17 @@ public class Projectile : MonoBehaviour
     float life;
 
     public static void Spawn(Vector3 pos, Vector3 dir, int damage)
+        => Spawn(pos, dir, damage, new Color(1f, 0.95f, 0.4f), 0.20f);
+
+    public static void Spawn(Vector3 pos, Vector3 dir, int damage, Color color, float scale)
     {
         var go = new GameObject("Projectile");
         go.transform.position = pos;
-        go.transform.localScale = Vector3.one * 0.2f;
+        go.transform.localScale = Vector3.one * scale;
 
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = VampireSurvivorsMini.CircleSprite;
-        sr.color = new Color(1f, 0.95f, 0.4f);
+        sr.color = color;
         sr.sortingOrder = 8;
 
         var p = go.AddComponent<Projectile>();

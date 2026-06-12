@@ -47,12 +47,9 @@ public class VampireSurvivorsMini : MonoBehaviour
 
         // プレイヤー生成
         var playerGo = new GameObject("Player");
-        var sr = playerGo.AddComponent<SpriteRenderer>();
-        sr.sprite = CircleSprite;
-        sr.color = new Color(0.3f, 0.8f, 1f);
-        sr.sortingOrder = 10;
         playerGo.transform.localScale = Vector3.one * 0.6f;
         var player = playerGo.AddComponent<Player>();
+        playerGo.AddComponent<PlayerVisuals>();
 
         // スポナー生成
         var spawnerGo = new GameObject("Spawner");

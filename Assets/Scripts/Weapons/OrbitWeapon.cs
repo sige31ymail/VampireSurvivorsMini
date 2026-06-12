@@ -51,7 +51,7 @@ public class OrbitWeapon : Weapon
                     lastHitTime[e] = Time.time;
                     // プレイヤーから外向きに押し出す
                     Vector3 outward = (e.transform.position - player.transform.position).normalized;
-                    e.TakeDamage(Damage, outward * Knockback);
+                    e.TakeDamage(player.RollDamage(Damage), outward * Knockback);
                     break;
                 }
             }

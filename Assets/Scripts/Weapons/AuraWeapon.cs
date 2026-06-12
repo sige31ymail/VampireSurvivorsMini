@@ -35,7 +35,7 @@ public class AuraWeapon : Weapon
         {
             tickTimer = TickInterval;
             // 軽いノックバック付きで範囲ダメージ（ニンニク風の押し返し）
-            GameState.DamageEnemiesWithin(player.transform.position, Radius, Damage, 0.15f);
+            GameState.DamageEnemiesWithin(player.transform.position, Radius, player.RollDamage(Damage), 0.15f);
         }
     }
 }

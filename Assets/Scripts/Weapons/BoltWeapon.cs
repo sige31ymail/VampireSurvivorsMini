@@ -28,7 +28,7 @@ public class BoltWeapon : Weapon
         {
             float offset = (i - (Count - 1) / 2f) * spread;
             var dir = Quaternion.Euler(0, 0, offset) * baseDir;
-            Projectile.Spawn(player.transform.position, dir, Damage);
+            Projectile.Spawn(player.transform.position, dir, player.RollDamage(Damage));
         }
     }
 }

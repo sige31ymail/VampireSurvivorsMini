@@ -29,6 +29,13 @@ public class Player : MonoBehaviour
 
     float invincibleTimer; // 被弾後の無敵時間
 
+    [Header("パッシブ")]
+    public float magnetRange = 2.5f;
+    public int armor = 0;
+    public float critChance = 0f;
+    public float regenPerSec = 0f;
+    float regenTimer;
+
     void Awake()
     {
         hp = maxHp;
@@ -54,6 +61,16 @@ public class Player : MonoBehaviour
             w.Tick(this, Time.deltaTime);
 
         if (invincibleTimer > 0f) invincibleTimer -= Time.deltaTime;
+
+        if (regenPerSec > 0f)
+        {
+            regenTimer += Time.deltaTime;
+            if (regenTimer >= 1f)
+            {
+                regenTimer -= 1f;
+                hp = Mathf.Min(maxHp, hp + Mathf.RoundToInt(regenPerSec));
+            }
+        }
     }
 
     void Move()
@@ -79,13 +96,18 @@ public class Player : MonoBehaviour
     public void TakeDamage(int damage)
     {
         if (invincibleTimer > 0f || GameState.GameOver) return;
-        hp -= damage;
+        hp -= Mathf.Max(1, damage - armor); // 最低1ダメージ
         invincibleTimer = 0.5f;
         if (hp <= 0)
         {
             hp = 0;
             GameState.GameOver = true;
         }
+    }
+
+    public int RollDamage(int baseDamage)
+    {
+        return critChance > 0f && Random.value < critChance ? baseDamage * 2 : baseDamage;
     }
 
     public void GainXp(int amount)
@@ -137,6 +159,20 @@ public class Player : MonoBehaviour
             p => { p.maxHp += 20; p.hp += 20; }));
         pool.Add(new UpgradeOption("移動速度 UP", "移動速度が8%上がる",
             p => p.moveSpeed *= 1.08f));
+
+        // パッシブアイテム
+        if (magnetRange < 8f)
+            pool.Add(new UpgradeOption("磁石", "XP吸引範囲が50%広がる（最大3回）",
+                p => p.magnetRange = Mathf.Min(8f, p.magnetRange * 1.5f)));
+        if (armor < 25)
+            pool.Add(new UpgradeOption("アーマー", "被ダメージを5軽減する（最大25）",
+                p => p.armor = Mathf.Min(25, p.armor + 5)));
+        if (critChance < 0.5f)
+            pool.Add(new UpgradeOption("クリティカル", "攻撃の10%が2倍ダメージ（最大50%）",
+                p => p.critChance = Mathf.Min(0.5f, p.critChance + 0.1f)));
+        if (regenPerSec < 5f)
+            pool.Add(new UpgradeOption("リジェネ", "毎秒1HP自動回復する（最大5/秒）",
+                p => p.regenPerSec = Mathf.Min(5f, p.regenPerSec + 1f)));
 
         // シャッフルして3つ選出
         currentOptions = pool.OrderBy(_ => Random.value).Take(3).ToList();

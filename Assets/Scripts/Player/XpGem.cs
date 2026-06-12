@@ -5,7 +5,6 @@ public class XpGem : MonoBehaviour
 {
     int value;
     Player player;
-    const float AttractRange = 2.5f;
     const float AttractSpeed = 8f;
 
     public static void Spawn(Vector3 pos, int value)
@@ -31,7 +30,7 @@ public class XpGem : MonoBehaviour
         Vector3 toPlayer = player.transform.position - transform.position;
         float dist = toPlayer.magnitude;
 
-        if (dist < AttractRange)
+        if (dist < player.magnetRange)
             transform.position += toPlayer.normalized * AttractSpeed * Time.deltaTime;
 
         if (dist < 0.5f)

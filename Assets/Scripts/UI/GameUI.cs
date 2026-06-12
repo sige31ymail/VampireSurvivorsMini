@@ -8,7 +8,8 @@ using UnityEngine.InputSystem; // 新Input System使用時
 public class GameUI : MonoBehaviour
 {
     public Player player;
-    GUIStyle labelStyle, bigStyle, toastStyle, buttonStyle;
+    GUIStyle labelStyle, bigStyle, toastStyle, buttonStyle, resultStyle;
+    bool isTransitioning;
 
     void OnGUI()
     {
@@ -36,6 +37,8 @@ public class GameUI : MonoBehaviour
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true
             };
+            resultStyle = new GUIStyle(GUI.skin.label) { fontSize = 22 };
+            resultStyle.normal.textColor = Color.white;
         }
 
         if (player == null) return;
@@ -76,18 +79,82 @@ public class GameUI : MonoBehaviour
             DrawLevelUpPanel();
 
         if (GameState.GameOver)
-        {
-            var rect = new Rect(0, Screen.height / 2f - 60, Screen.width, 120);
-            GUI.Label(rect, "GAME OVER\n[R] でリスタート", bigStyle);
+            DrawResultScreen();
+    }
 
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-            bool restart = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
-#else
-            bool restart = Input.GetKeyDown(KeyCode.R);
-#endif
-            if (restart)
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    void DrawResultScreen()
+    {
+        if (isTransitioning) return;
+
+        // 背景オーバーレイ
+        GUI.color = new Color(0, 0, 0, 0.85f);
+        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        float cx = Screen.width / 2f;
+        float cy = Screen.height / 2f;
+
+        // ヘッダー
+        GUI.Label(new Rect(0, cy - 210, Screen.width, 70), "GAME OVER", bigStyle);
+
+        // ステータスパネル
+        float panelW = Mathf.Min(360f, Screen.width - 40f);
+        float lineH = 34f;
+        float panelH = 102f + player.weapons.Count * lineH + 20f;
+        float panelX = cx - panelW / 2f;
+        float panelY = cy - 130f;
+
+        GUI.color = new Color(1f, 1f, 1f, 0.08f);
+        GUI.DrawTexture(new Rect(panelX, panelY, panelW, panelH), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        int t = (int)GameState.ElapsedTime;
+        float lx = panelX + 20f;
+        float ly = panelY + 12f;
+        GUI.Label(new Rect(lx, ly,      panelW - 20, lineH), $"生存時間     {t / 60:00}:{t % 60:00}", resultStyle);
+        GUI.Label(new Rect(lx, ly + 34, panelW - 20, lineH), $"撃破数       {GameState.KillCount}", resultStyle);
+        GUI.Label(new Rect(lx, ly + 68, panelW - 20, lineH), $"到達レベル   {player.level}", resultStyle);
+
+        for (int i = 0; i < player.weapons.Count; i++)
+        {
+            var w = player.weapons[i];
+            string prefix = i == 0 ? "武器         " : "             ";
+            GUI.Label(new Rect(lx, ly + 102 + i * lineH, panelW - 20, lineH),
+                prefix + $"{w.Name} Lv{w.level}", resultStyle);
         }
+
+        // ボタン
+        float btnW = 160f, btnH = 52f, btnGap = 20f;
+        float btnY = panelY + panelH + 24f;
+        float btnX = cx - (btnW * 2 + btnGap) / 2f;
+
+        if (GUI.Button(new Rect(btnX,              btnY, btnW, btnH), "もう一度 [R]", buttonStyle))
+            Transition(SceneManager.GetActiveScene().buildIndex);
+
+        if (GUI.Button(new Rect(btnX + btnW + btnGap, btnY, btnW, btnH), "タイトルへ", buttonStyle))
+            Transition("TitleScene");
+
+        // Rキーでも即リスタート
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+#else
+        if (Input.GetKeyDown(KeyCode.R))
+#endif
+            Transition(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    void Transition(string sceneName)
+    {
+        isTransitioning = true;
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
+    }
+
+    void Transition(int buildIndex)
+    {
+        isTransitioning = true;
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(buildIndex);
     }
 
     void DrawBar(Rect rect, float ratio, Color color, string text)

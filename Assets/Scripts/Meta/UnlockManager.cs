@@ -181,6 +181,114 @@ public class UnlockManager : MonoBehaviour
         }
         return list;
     }
+
+    /// <summary>文字列IDでアンロック状態を確認</summary>
+    public bool IsUnlocked(string id)
+    {
+        if (SaveSystem.Instance == null) return false;
+        var meta = SaveSystem.Instance.MetaProgress;
+
+        // stage_forest, char_vampire などの形式を解析
+        if (id.StartsWith("stage_"))
+        {
+            string stageName = id.Substring(6);
+            int index = GetStageIndex(stageName);
+            return index >= 0 && index < meta.UnlockedStages.Length && meta.UnlockedStages[index];
+        }
+        else if (id.StartsWith("char_"))
+        {
+            string charName = id.Substring(5);
+            int index = GetCharacterIndex(charName);
+            return index >= 0 && index < meta.UnlockedCharacters.Length && meta.UnlockedCharacters[index];
+        }
+        else if (id.StartsWith("weapon_"))
+        {
+            string weaponName = id.Substring(7);
+            int index = GetWeaponIndex(weaponName);
+            return index >= 0 && index < meta.UnlockedWeapons.Length && meta.UnlockedWeapons[index];
+        }
+
+        return false;
+    }
+
+    /// <summary>文字列IDでアンロックする</summary>
+    public void Unlock(string id)
+    {
+        if (SaveSystem.Instance == null) return;
+        var meta = SaveSystem.Instance.MetaProgress;
+
+        if (id.StartsWith("stage_"))
+        {
+            string stageName = id.Substring(6);
+            int index = GetStageIndex(stageName);
+            if (index >= 0 && index < meta.UnlockedStages.Length)
+            {
+                meta.UnlockedStages[index] = true;
+            }
+        }
+        else if (id.StartsWith("char_"))
+        {
+            string charName = id.Substring(5);
+            int index = GetCharacterIndex(charName);
+            if (index >= 0 && index < meta.UnlockedCharacters.Length)
+            {
+                meta.UnlockedCharacters[index] = true;
+            }
+        }
+        else if (id.StartsWith("weapon_"))
+        {
+            string weaponName = id.Substring(7);
+            int index = GetWeaponIndex(weaponName);
+            if (index >= 0 && index < meta.UnlockedWeapons.Length)
+            {
+                meta.UnlockedWeapons[index] = true;
+            }
+        }
+
+        SaveSystem.Instance.SaveMetaProgress();
+    }
+
+    int GetStageIndex(string name)
+    {
+        return name.ToLower() switch
+        {
+            "grassland" => 0,
+            "forest" => 1,
+            "graveyard" => 2,
+            "castle" => 3,
+            _ => -1
+        };
+    }
+
+    int GetCharacterIndex(string name)
+    {
+        return name.ToLower() switch
+        {
+            "knight" => 0,
+            "mage" => 1,
+            "rogue" => 2,
+            "cleric" => 3,
+            "vampire" => 4,
+            "necromancer" => 5,
+            _ => -1
+        };
+    }
+
+    int GetWeaponIndex(string name)
+    {
+        return name.ToLower() switch
+        {
+            "bolt" => 0,
+            "orbit" => 1,
+            "aura" => 2,
+            "crossbolt" => 3,
+            "knife" => 4,
+            "axe" => 5,
+            "whip" => 6,
+            "bible" => 7,
+            _ => -1
+        };
+    }
 }
 
 /// <summary>アンロック条件タイプ</summary>

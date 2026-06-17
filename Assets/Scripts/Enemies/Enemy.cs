@@ -245,7 +245,20 @@ public class Enemy : MonoBehaviour
             flashTimer -= Time.deltaTime;
             bool white = flashTimer > 0f;
             for (int i = 0; i < allRenderers.Length; i++)
-                allRenderers[i].color = white ? Color.white : allBaseColors[i];
+            {
+                if (allRenderers[i] != null)
+                    allRenderers[i].color = white ? Color.white : allBaseColors[i];
+            }
+        }
+
+        // 視野外カリング：画面外の敵は軽量更新のみ
+        float distToPlayer = (player.transform.position - transform.position).sqrMagnitude;
+        if (distToPlayer > 225f) // 15ユニット以上離れている
+        {
+            // 遠くの敵は単純な追尾のみ
+            Vector3 toPlayer = player.transform.position - transform.position;
+            transform.position += toPlayer.normalized * moveSpeed * 0.5f * Time.deltaTime;
+            return;
         }
 
         // タイプ別行動
@@ -607,6 +620,7 @@ public class EnemyProjectile : MonoBehaviour
     int damage;
     Vector3 direction;
     float life;
+    Player cachedPlayer;
     const float Speed = 5f;
     const float Lifetime = 4f;
 
@@ -624,20 +638,22 @@ public class EnemyProjectile : MonoBehaviour
         var proj = go.AddComponent<EnemyProjectile>();
         proj.damage = damage;
         proj.direction = dir.normalized;
+        proj.cachedPlayer = Object.FindObjectOfType<Player>();
     }
 
     void Update()
     {
+        if (GameState.GameOver) { Destroy(gameObject); return; }
+
         transform.position += direction * Speed * Time.deltaTime;
         life += Time.deltaTime;
         if (life > Lifetime) { Destroy(gameObject); return; }
 
-        var player = Object.FindObjectOfType<Player>();
-        if (player != null)
+        if (cachedPlayer != null)
         {
-            if ((player.transform.position - transform.position).sqrMagnitude < 0.4f * 0.4f)
+            if ((cachedPlayer.transform.position - transform.position).sqrMagnitude < 0.4f * 0.4f)
             {
-                player.TakeDamage(damage);
+                cachedPlayer.TakeDamage(damage);
                 Destroy(gameObject);
             }
         }
@@ -649,6 +665,8 @@ public class MagicCircle : MonoBehaviour
 {
     int damage;
     float life;
+    bool hasExploded;
+    Player cachedPlayer;
     const float ChargeTime = 1.2f;
     const float Radius = 1.2f;
     SpriteRenderer sr;
@@ -667,30 +685,36 @@ public class MagicCircle : MonoBehaviour
         var mc = go.AddComponent<MagicCircle>();
         mc.damage = damage;
         mc.sr = sr;
+        mc.cachedPlayer = Object.FindObjectOfType<Player>();
     }
 
     void Update()
     {
+        if (GameState.GameOver || hasExploded) return;
+
         life += Time.deltaTime;
 
         // 点滅警告
         float flash = Mathf.Sin(life * 10f) * 0.2f + 0.4f;
-        sr.color = new Color(0.8f, 0.3f, 1f, flash);
+        if (sr != null)
+            sr.color = new Color(0.8f, 0.3f, 1f, flash);
 
         if (life >= ChargeTime)
         {
+            hasExploded = true;
+
             // 爆発ダメージ
-            var player = Object.FindObjectOfType<Player>();
-            if (player != null)
+            if (cachedPlayer != null)
             {
-                if ((player.transform.position - transform.position).sqrMagnitude < Radius * Radius)
+                if ((cachedPlayer.transform.position - transform.position).sqrMagnitude < Radius * Radius)
                 {
-                    player.TakeDamage(damage);
+                    cachedPlayer.TakeDamage(damage);
                 }
             }
 
             // 爆発エフェクト
-            sr.color = new Color(1f, 0.5f, 1f, 0.8f);
+            if (sr != null)
+                sr.color = new Color(1f, 0.5f, 1f, 0.8f);
             Destroy(gameObject, 0.1f);
         }
     }

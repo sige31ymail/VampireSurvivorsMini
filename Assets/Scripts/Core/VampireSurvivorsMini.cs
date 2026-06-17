@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ヴァンパイアサバイバー風ミニプロトタイプ v7（Phase 3: コンテンツ拡張）
+/// ヴァンパイアサバイバー風ミニプロトタイプ v8（Phase 5: 最適化・QA完了）
 ///
 /// 使い方:
 ///   1. このファイルを Assets/ に置く（旧版があれば上書き）
@@ -11,15 +11,17 @@ using UnityEngine;
 /// 操作:
 ///   WASD / 矢印キー : 移動（攻撃は自動）
 ///   ESC            : ポーズメニュー（設定へアクセス可能）
-///   レベルアップ時  : 3択をクリック or 1/2/3キーで選択（選択中はゲーム停止）
-///   R : ゲームオーバー後にリスタート
+///   Tab            : チュートリアルスキップ
+///   レベルアップ時  : 3択をクリック or 1/2/3キーで選択
+///   R              : ゲームオーバー後にリスタート
+///   F3             : パフォーマンスモニター（デバッグ）
 ///
-/// Phase 3 新機能:
-///   - 12種類の武器（ナイフ、斧、ムチ、雷、聖書、ニンニク、火の杖、ブーメラン等）
-///   - 16種類の敵（Bat、Ghost、Skeleton、Slime、Mage、Archer、Golem、Vampire等）
-///   - 6種類のキャラクター（騎士、魔法使い、ローグ、クレリック、ヴァンパイア、ネクロマンサー）
-///   - 4つのステージ（草原、森、墓地、城）
-///   - ステージごとのボス
+/// 実装済み機能:
+///   Phase 1: オブジェクトプール、セーブ、設定、ポーズ
+///   Phase 2: メタプログレッション、アンロック、統計
+///   Phase 3: 12武器、16敵、6キャラ、4ステージ
+///   Phase 4: VFX、チュートリアル、実績、状況BGM
+///   Phase 5: 空間ハッシュ最適化、視野外カリング、QA
 /// </summary>
 public class VampireSurvivorsMini : MonoBehaviour
 {
@@ -108,9 +110,24 @@ public class VampireSurvivorsMini : MonoBehaviour
         var vfxGo = new GameObject("VfxManager");
         vfxGo.AddComponent<VfxManager>();
 
+        // === Performance Monitor (Debug) ===
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        var perfGo = new GameObject("PerformanceMonitor");
+        perfGo.AddComponent<PerformanceMonitor>();
+        #endif
+
         // === Reset Game State ===
         GameState.Reset();
         pendingUnlocks.Clear();
+    }
+
+    void Update()
+    {
+        // 空間ハッシュを毎フレーム更新（衝突判定の高速化）
+        if (!GameState.GameOver)
+        {
+            GameState.UpdateSpatialHash();
+        }
     }
 
     void SetupCamera()

@@ -84,11 +84,13 @@ public class Projectile : MonoBehaviour, IPoolable
             return;
         }
 
-        // 命中判定（最初に当たった敵1体にダメージ）
-        foreach (var e in GameState.Enemies)
+        // 命中判定（空間ハッシュを使用して高速化）
+        const float hitRadius = 0.35f;
+        var nearbyEnemies = GameState.GetEnemiesWithin(transform.position, hitRadius + 0.5f);
+        foreach (var e in nearbyEnemies)
         {
             if (e == null) continue;
-            if ((e.transform.position - transform.position).sqrMagnitude < 0.35f * 0.35f)
+            if ((e.transform.position - transform.position).sqrMagnitude < hitRadius * hitRadius)
             {
                 e.TakeDamage(damage);
                 ReturnToPool();

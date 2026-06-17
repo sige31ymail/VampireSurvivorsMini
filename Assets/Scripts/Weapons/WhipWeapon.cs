@@ -28,9 +28,10 @@ public class WhipWeapon : Weapon
 
         Vector3 center = player.transform.position + Vector3.right * dir * (Range / 2f);
 
-        // 範囲内の敵にダメージ
+        // 範囲内の敵にダメージ（空間ハッシュで最適化）
         var hitEnemies = new List<Enemy>();
-        foreach (var e in GameState.Enemies)
+        var nearbyEnemies = GameState.GetEnemiesWithin(center, Range);
+        foreach (var e in nearbyEnemies)
         {
             if (e == null) continue;
             Vector3 diff = e.transform.position - player.transform.position;

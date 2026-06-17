@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// ヴァンパイアサバイバー風ミニプロトタイプ v4（敵バリエーション追加）
+/// ヴァンパイアサバイバー風ミニプロトタイプ v5（Phase 1: 基盤システム追加）
 ///
 /// 使い方:
 ///   1. このファイルを Assets/ に置く（旧版があれば上書き）
@@ -9,6 +9,7 @@ using UnityEngine;
 ///
 /// 操作:
 ///   WASD / 矢印キー : 移動（攻撃は自動）
+///   ESC            : ポーズメニュー（設定へアクセス可能）
 ///   レベルアップ時  : 3択をクリック or 1/2/3キーで選択（選択中はゲーム停止）
 ///   R : ゲームオーバー後にリスタート
 ///
@@ -23,6 +24,13 @@ using UnityEngine;
 ///   マジックボルト   : 最も近い敵へ弾を発射（Lvで弾数・連射UP）
 ///   オービットオーブ : 周囲を回転する球（Lvで個数・威力UP）
 ///   ダメージオーラ   : 周囲の敵に継続ダメージ（Lvで範囲・威力UP）
+///   クロスボルト     : 全方位へ弾を発射（Lvで弾数UP）
+///
+/// Phase 1 新機能:
+///   - オブジェクトプーリング（パフォーマンス向上）
+///   - セーブ/ロードシステム（設定・統計の永続化）
+///   - ポーズメニュー（ESCキー）
+///   - 設定メニュー（音量・画面設定）
 /// </summary>
 public class VampireSurvivorsMini : MonoBehaviour
 {
@@ -36,31 +44,52 @@ public class VampireSurvivorsMini : MonoBehaviour
         CreateSprites();
         SetupCamera();
 
+        // === Core Systems ===
+
+        // SaveSystem（シーンをまたいで永続）
+        if (SaveSystem.Instance == null)
+            new GameObject("SaveSystem").AddComponent<SaveSystem>();
+
         // AudioManager（シーンをまたいで永続）
         if (AudioManager.Instance == null)
             new GameObject("AudioManager").AddComponent<AudioManager>();
         else
             AudioManager.Instance.RestartBgm();
 
-        // 背景
+        // 設定を適用
+        ApplySavedSettings();
+
+        // ObjectPool（シーン単位）
+        var poolGo = new GameObject("ObjectPool");
+        poolGo.AddComponent<ObjectPool>();
+
+        // プールの事前生成（パフォーマンス向上）
+        PrewarmPools();
+
+        // === Background ===
         new GameObject("Background").AddComponent<Background>();
         new GameObject("AmbientFx").AddComponent<AmbientFx>();
 
-        // プレイヤー生成
+        // === Player ===
         var playerGo = new GameObject("Player");
         playerGo.transform.localScale = Vector3.one * 0.6f;
         var player = playerGo.AddComponent<Player>();
         playerGo.AddComponent<PlayerVisuals>();
 
-        // スポナー生成
+        // === Spawner ===
         var spawnerGo = new GameObject("Spawner");
         var spawner = spawnerGo.AddComponent<EnemySpawner>();
         spawner.player = player;
 
-        // UI
+        // === UI ===
         var uiGo = new GameObject("UI");
         uiGo.AddComponent<GameUI>().player = player;
 
+        // === Pause Menu ===
+        var pauseGo = new GameObject("PauseMenu");
+        pauseGo.AddComponent<PauseMenu>().player = player;
+
+        // === Reset Game State ===
         GameState.Reset();
     }
 
@@ -108,5 +137,73 @@ public class VampireSurvivorsMini : MonoBehaviour
         squareTex.Apply();
         SquareSprite = Sprite.Create(squareTex, new Rect(0, 0, size, size),
             new Vector2(0.5f, 0.5f), size);
+    }
+
+    void ApplySavedSettings()
+    {
+        if (SaveSystem.Instance == null) return;
+
+        var settings = SaveSystem.Instance.Settings;
+
+        // 音量を適用
+        if (AudioManager.Instance != null)
+        {
+            var sources = AudioManager.Instance.GetComponents<AudioSource>();
+            if (sources.Length > 0) sources[0].volume = settings.BgmVolume;
+            if (sources.Length > 1) sources[1].volume = settings.SeVolume;
+        }
+    }
+
+    void PrewarmPools()
+    {
+        if (ObjectPool.Instance == null) return;
+
+        // 弾：同時に画面上に存在しうる最大数
+        ObjectPool.Instance.Prewarm<Projectile>(50, go =>
+        {
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = CircleSprite;
+            sr.sortingOrder = 8;
+        });
+
+        // 経験値ジェム：ボス討伐時などで大量にスポーン
+        ObjectPool.Instance.Prewarm<XpGem>(30, go =>
+        {
+            go.transform.localScale = Vector3.one * 0.25f;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = CircleSprite;
+            sr.color = new Color(0.4f, 1f, 0.5f);
+            sr.sortingOrder = 3;
+        });
+
+        // ダメージポップアップ
+        ObjectPool.Instance.Prewarm<DamagePopup>(20);
+
+        // 死亡パーティクル
+        ObjectPool.Instance.Prewarm<DeathParticle>(60, go =>
+        {
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = SquareSprite;
+            sr.sortingOrder = 7;
+        });
+    }
+
+    void OnDestroy()
+    {
+        // ゲーム終了時に統計を記録
+        if (SaveSystem.Instance != null && GameState.ElapsedTime > 0)
+        {
+            // ゴールドは後のフェーズで実装
+            int goldEarned = Mathf.RoundToInt(GameState.KillCount * 0.5f);
+            var player = FindObjectOfType<Player>();
+            int level = player != null ? player.level : 1;
+
+            SaveSystem.Instance.RecordGameResult(
+                GameState.ElapsedTime,
+                GameState.KillCount,
+                level,
+                goldEarned
+            );
+        }
     }
 }

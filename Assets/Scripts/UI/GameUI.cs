@@ -43,6 +43,9 @@ public class GameUI : MonoBehaviour
 
         if (player == null) return;
 
+        // ポーズ中はHUDを描画しない（ポーズメニューが表示される）
+        if (PauseMenu.IsPaused) return;
+
         // HPバー
         DrawBar(new Rect(20, 20, 240, 22),
             (float)player.hp / player.maxHp,

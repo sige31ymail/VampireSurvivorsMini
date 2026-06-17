@@ -1,7 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ヴァンパイアサバイバー風ミニプロトタイプ v5（Phase 1: 基盤システム追加）
+/// ヴァンパイアサバイバー風ミニプロトタイプ v6（Phase 2: メタプログレッション追加）
 ///
 /// 使い方:
 ///   1. このファイルを Assets/ に置く（旧版があれば上書き）
@@ -26,16 +27,25 @@ using UnityEngine;
 ///   ダメージオーラ   : 周囲の敵に継続ダメージ（Lvで範囲・威力UP）
 ///   クロスボルト     : 全方位へ弾を発射（Lvで弾数UP）
 ///
-/// Phase 1 新機能:
+/// Phase 1 機能:
 ///   - オブジェクトプーリング（パフォーマンス向上）
 ///   - セーブ/ロードシステム（設定・統計の永続化）
 ///   - ポーズメニュー（ESCキー）
 ///   - 設定メニュー（音量・画面設定）
+///
+/// Phase 2 新機能:
+///   - メタプログレッション（永続アップグレード）
+///   - ゴールドシステム（敵ドロップ・ショップ）
+///   - アンロックシステム（条件達成で解放）
+///   - 統計追跡の強化
 /// </summary>
 public class VampireSurvivorsMini : MonoBehaviour
 {
     public static Sprite CircleSprite { get; private set; }
     public static Sprite SquareSprite { get; private set; }
+
+    // ゲーム終了時のアンロック通知用
+    static List<UnlockableItem> pendingUnlocks = new List<UnlockableItem>();
 
     void Start()
     {
@@ -56,6 +66,14 @@ public class VampireSurvivorsMini : MonoBehaviour
         else
             AudioManager.Instance.RestartBgm();
 
+        // MetaProgressionManager（シーンをまたいで永続）
+        if (MetaProgressionManager.Instance == null)
+            new GameObject("MetaProgressionManager").AddComponent<MetaProgressionManager>();
+
+        // UnlockManager（シーンをまたいで永続）
+        if (UnlockManager.Instance == null)
+            new GameObject("UnlockManager").AddComponent<UnlockManager>();
+
         // 設定を適用
         ApplySavedSettings();
 
@@ -65,6 +83,9 @@ public class VampireSurvivorsMini : MonoBehaviour
 
         // プールの事前生成（パフォーマンス向上）
         PrewarmPools();
+
+        // セッションゴールドをリセット
+        GoldCoin.ResetSessionGold();
 
         // === Background ===
         new GameObject("Background").AddComponent<Background>();
@@ -91,6 +112,7 @@ public class VampireSurvivorsMini : MonoBehaviour
 
         // === Reset Game State ===
         GameState.Reset();
+        pendingUnlocks.Clear();
     }
 
     void SetupCamera()
@@ -176,6 +198,16 @@ public class VampireSurvivorsMini : MonoBehaviour
             sr.sortingOrder = 3;
         });
 
+        // ゴールドコイン
+        ObjectPool.Instance.Prewarm<GoldCoin>(20, go =>
+        {
+            go.transform.localScale = Vector3.one * 0.22f;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = CircleSprite;
+            sr.color = new Color(1f, 0.85f, 0.2f);
+            sr.sortingOrder = 4;
+        });
+
         // ダメージポップアップ
         ObjectPool.Instance.Prewarm<DamagePopup>(20);
 
@@ -190,20 +222,40 @@ public class VampireSurvivorsMini : MonoBehaviour
 
     void OnDestroy()
     {
-        // ゲーム終了時に統計を記録
+        // ゲーム終了時の処理
         if (SaveSystem.Instance != null && GameState.ElapsedTime > 0)
         {
-            // ゴールドは後のフェーズで実装
-            int goldEarned = Mathf.RoundToInt(GameState.KillCount * 0.5f);
             var player = FindObjectOfType<Player>();
             int level = player != null ? player.level : 1;
 
+            // セッション中に獲得したゴールドを永続化
+            int sessionGold = GoldCoin.SessionGold;
+            if (sessionGold > 0 && MetaProgressionManager.Instance != null)
+            {
+                MetaProgressionManager.Instance.AddGold(sessionGold);
+            }
+
+            // 統計を記録
             SaveSystem.Instance.RecordGameResult(
                 GameState.ElapsedTime,
                 GameState.KillCount,
                 level,
-                goldEarned
+                sessionGold
             );
+
+            // アンロック条件をチェック
+            if (UnlockManager.Instance != null)
+            {
+                pendingUnlocks = UnlockManager.Instance.CheckUnlocks();
+            }
         }
+    }
+
+    /// <summary>直前のゲームでアンロックされたアイテムを取得（タイトル画面で表示用）</summary>
+    public static List<UnlockableItem> GetPendingUnlocks()
+    {
+        var result = new List<UnlockableItem>(pendingUnlocks);
+        pendingUnlocks.Clear();
+        return result;
     }
 }

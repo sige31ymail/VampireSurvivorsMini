@@ -6,6 +6,7 @@ public class TitleScreen : MonoBehaviour
 {
     GUIStyle titleStyle, subtitleStyle, buttonStyle, smallButtonStyle, infoStyle, statsStyle;
     SettingsMenu settingsMenu;
+    UpgradeShopUI upgradeShopUI;
     bool showStats;
 
     void Start()
@@ -25,16 +26,26 @@ public class TitleScreen : MonoBehaviour
         if (AudioManager.Instance == null)
             new GameObject("AudioManager").AddComponent<AudioManager>();
 
-        // 設定メニューコンポーネントを追加
+        // MetaProgressionManager の初期化
+        if (MetaProgressionManager.Instance == null)
+            new GameObject("MetaProgressionManager").AddComponent<MetaProgressionManager>();
+
+        // UnlockManager の初期化
+        if (UnlockManager.Instance == null)
+            new GameObject("UnlockManager").AddComponent<UnlockManager>();
+
+        // UIコンポーネントを追加
         settingsMenu = gameObject.AddComponent<SettingsMenu>();
+        upgradeShopUI = gameObject.AddComponent<UpgradeShopUI>();
     }
 
     void OnGUI()
     {
         if (titleStyle == null) InitStyles();
 
-        // 設定メニューが表示中は他のUIを描画しない
+        // 設定メニューまたはアップグレードショップが表示中は他のUIを描画しない
         if (settingsMenu != null && settingsMenu.IsVisible) return;
+        if (upgradeShopUI != null && upgradeShopUI.IsVisible) return;
 
         // 統計画面
         if (showStats)
@@ -50,15 +61,30 @@ public class TitleScreen : MonoBehaviour
         GUI.Label(new Rect(0, cy - 60,  Screen.width, 40), "生き残れ、強くなれ", subtitleStyle);
 
         float btnW = 220f, btnH = 64f;
-        float smallBtnW = 140f, smallBtnH = 45f;
-        float btnGap = 15f;
+        float smallBtnW = 100f, smallBtnH = 42f;
+        float btnGap = 10f;
 
         // Play ボタン
         if (GUI.Button(new Rect(cx - btnW / 2f, cy + 10, btnW, btnH), "PLAY", buttonStyle))
             SceneManager.LoadScene("SampleScene");
 
-        // Settings と Stats ボタン
-        float smallBtnY = cy + 10 + btnH + 20;
+        // Upgrade Shop ボタン（大きめ）
+        float shopBtnW = 180f, shopBtnH = 50f;
+        float shopBtnY = cy + 10 + btnH + 15;
+        if (GUI.Button(new Rect(cx - shopBtnW / 2f, shopBtnY, shopBtnW, shopBtnH), "Upgrades", buttonStyle))
+        {
+            upgradeShopUI?.Show();
+        }
+
+        // ゴールド表示
+        int gold = MetaProgressionManager.Instance?.Gold ?? 0;
+        var goldStyle = new GUIStyle(infoStyle);
+        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+        goldStyle.fontSize = 16;
+        GUI.Label(new Rect(0, shopBtnY + shopBtnH + 5, Screen.width, 25), $"Gold: {gold}", goldStyle);
+
+        // Settings, Stats ボタン
+        float smallBtnY = shopBtnY + shopBtnH + 35;
         float totalSmallW = smallBtnW * 2 + btnGap;
         float smallBtnX = cx - totalSmallW / 2f;
 
@@ -73,12 +99,12 @@ public class TitleScreen : MonoBehaviour
         }
 
         // 操作説明
-        float infoY = smallBtnY + smallBtnH + 30;
-        GUI.Label(new Rect(0, infoY, Screen.width, 28), "WASD / 矢印キー で移動　攻撃は自動", infoStyle);
-        GUI.Label(new Rect(0, infoY + 28, Screen.width, 28), "ESC でポーズ　レベルアップ時: 1/2/3 キーで選択", infoStyle);
+        float infoY = smallBtnY + smallBtnH + 20;
+        GUI.Label(new Rect(0, infoY, Screen.width, 24), "WASD / 矢印キー で移動　攻撃は自動", infoStyle);
+        GUI.Label(new Rect(0, infoY + 24, Screen.width, 24), "ESC でポーズ　レベルアップ時: 1/2/3 キーで選択", infoStyle);
 
         // バージョン表示
-        GUI.Label(new Rect(10, Screen.height - 30, 200, 25), "v0.5.0 (Phase 1)", infoStyle);
+        GUI.Label(new Rect(10, Screen.height - 30, 200, 25), "v0.6.0 (Phase 2)", infoStyle);
     }
 
     void DrawStatsScreen()

@@ -38,8 +38,33 @@ public class Player : MonoBehaviour
 
     void Awake()
     {
+        // メタプログレッションボーナスを適用
+        ApplyMetaProgressionBonuses();
+
         hp = maxHp;
         weapons.Add(new BoltWeapon()); // 初期武器
+    }
+
+    /// <summary>メタプログレッションの永続ボーナスを適用</summary>
+    void ApplyMetaProgressionBonuses()
+    {
+        var meta = MetaProgressionManager.Instance;
+        if (meta == null) return;
+
+        // 最大HP（基本値に倍率適用）
+        maxHp = Mathf.RoundToInt(maxHp * meta.GetMaxHpMultiplier());
+
+        // 移動速度
+        moveSpeed *= meta.GetMoveSpeedMultiplier();
+
+        // 磁石範囲
+        magnetRange *= meta.GetMagnetMultiplier();
+
+        // アーマー
+        armor += meta.GetArmorBonus();
+
+        // リジェネ
+        regenPerSec += meta.GetRegenBonus();
     }
 
     void Update()
@@ -109,12 +134,20 @@ public class Player : MonoBehaviour
 
     public int RollDamage(int baseDamage)
     {
-        return critChance > 0f && Random.value < critChance ? baseDamage * 2 : baseDamage;
+        // メタプログレッションの攻撃力ボーナスを適用
+        float attackMult = MetaProgressionManager.Instance?.GetAttackMultiplier() ?? 1f;
+        int boostedDamage = Mathf.RoundToInt(baseDamage * attackMult);
+
+        return critChance > 0f && Random.value < critChance ? boostedDamage * 2 : boostedDamage;
     }
 
     public void GainXp(int amount)
     {
-        xp += amount;
+        // メタプログレッションのXPボーナスを適用
+        float xpMult = MetaProgressionManager.Instance?.GetXpGainMultiplier() ?? 1f;
+        int boostedAmount = Mathf.RoundToInt(amount * xpMult);
+
+        xp += boostedAmount;
         while (xp >= xpToNext)
         {
             xp -= xpToNext;

@@ -56,13 +56,18 @@ public class GameUI : MonoBehaviour
             (float)player.xp / player.xpToNext,
             new Color(0.4f, 0.9f, 0.5f), $"Lv {player.level}");
 
-        // 経過時間とキル数
+        // 経過時間、キル数、ゴールド
         int t = (int)GameState.ElapsedTime;
         GUI.Label(new Rect(20, 72, 300, 30),
             $"{t / 60:00}:{t % 60:00}   Kills: {GameState.KillCount}", labelStyle);
 
+        // ゴールド表示
+        var goldStyle = new GUIStyle(labelStyle);
+        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+        GUI.Label(new Rect(20, 96, 200, 26), $"Gold: {GoldCoin.SessionGold}", goldStyle);
+
         // 所持武器一覧
-        float y = 100;
+        float y = 124;
         foreach (var w in player.weapons)
         {
             string max = w.IsMaxLevel ? " (MAX)" : "";
@@ -103,9 +108,9 @@ public class GameUI : MonoBehaviour
         // ステータスパネル
         float panelW = Mathf.Min(360f, Screen.width - 40f);
         float lineH = 34f;
-        float panelH = 102f + player.weapons.Count * lineH + 20f;
+        float panelH = 136f + player.weapons.Count * lineH + 20f;
         float panelX = cx - panelW / 2f;
-        float panelY = cy - 130f;
+        float panelY = cy - 140f;
 
         GUI.color = new Color(1f, 1f, 1f, 0.08f);
         GUI.DrawTexture(new Rect(panelX, panelY, panelW, panelH), Texture2D.whiteTexture);
@@ -118,11 +123,16 @@ public class GameUI : MonoBehaviour
         GUI.Label(new Rect(lx, ly + 34, panelW - 20, lineH), $"撃破数       {GameState.KillCount}", resultStyle);
         GUI.Label(new Rect(lx, ly + 68, panelW - 20, lineH), $"到達レベル   {player.level}", resultStyle);
 
+        // 獲得ゴールド
+        var goldResultStyle = new GUIStyle(resultStyle);
+        goldResultStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+        GUI.Label(new Rect(lx, ly + 102, panelW - 20, lineH), $"獲得ゴールド +{GoldCoin.SessionGold}", goldResultStyle);
+
         for (int i = 0; i < player.weapons.Count; i++)
         {
             var w = player.weapons[i];
             string prefix = i == 0 ? "武器         " : "             ";
-            GUI.Label(new Rect(lx, ly + 102 + i * lineH, panelW - 20, lineH),
+            GUI.Label(new Rect(lx, ly + 136 + i * lineH, panelW - 20, lineH),
                 prefix + $"{w.Name} Lv{w.level}", resultStyle);
         }
 

@@ -214,10 +214,40 @@ public class Enemy : MonoBehaviour
                 var offset = (Vector3)(Random.insideUnitCircle * 1.2f);
                 XpGem.Spawn(transform.position + offset, 1);
             }
+            // ボスは大量のゴールドをドロップ
+            int goldAmount = 10 + (int)(GameState.ElapsedTime / 60f) * 5;
+            for (int i = 0; i < 5; i++)
+            {
+                var offset = (Vector3)(Random.insideUnitCircle * 1.0f);
+                GoldCoin.Spawn(transform.position + offset, goldAmount / 5);
+            }
         }
         else
         {
             XpGem.Spawn(transform.position, xpValue);
+
+            // 一定確率でゴールドをドロップ（敵タイプにより確率変動）
+            float dropChance = type switch
+            {
+                EnemyType.Chaser => 0.15f,
+                EnemyType.Runner => 0.10f,
+                EnemyType.Tank => 0.35f,
+                EnemyType.Dasher => 0.25f,
+                _ => 0.15f
+            };
+
+            if (Random.value < dropChance)
+            {
+                int goldValue = type switch
+                {
+                    EnemyType.Chaser => 1,
+                    EnemyType.Runner => 1,
+                    EnemyType.Tank => 3,
+                    EnemyType.Dasher => 2,
+                    _ => 1
+                };
+                GoldCoin.Spawn(transform.position, goldValue);
+            }
         }
         Destroy(gameObject);
     }

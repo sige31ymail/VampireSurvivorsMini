@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ヴァンパイアサバイバー風ミニプロトタイプ v6（Phase 2: メタプログレッション追加）
+/// ヴァンパイアサバイバー風ミニプロトタイプ v7（Phase 3: コンテンツ拡張）
 ///
 /// 使い方:
 ///   1. このファイルを Assets/ に置く（旧版があれば上書き）
@@ -14,30 +14,12 @@ using UnityEngine;
 ///   レベルアップ時  : 3択をクリック or 1/2/3キーで選択（選択中はゲーム停止）
 ///   R : ゲームオーバー後にリスタート
 ///
-/// 敵の種類:
-///   チェイサー(赤・中)     : 標準。まっすぐ追ってくる
-///   ランナー(橙・小)       : 速いが脆い。30秒頃から出現
-///   タンク(暗赤・大)       : 遅くて硬い。倒すとXP3個分。60秒頃から
-///   ダッシャー(桃・ひし形) : 白く点滅した後に突進。90秒頃から
-///   ボス(紫・特大)         : 60秒ごとに出現。倒すとジェムをばら撒く
-///
-/// 武器一覧:
-///   マジックボルト   : 最も近い敵へ弾を発射（Lvで弾数・連射UP）
-///   オービットオーブ : 周囲を回転する球（Lvで個数・威力UP）
-///   ダメージオーラ   : 周囲の敵に継続ダメージ（Lvで範囲・威力UP）
-///   クロスボルト     : 全方位へ弾を発射（Lvで弾数UP）
-///
-/// Phase 1 機能:
-///   - オブジェクトプーリング（パフォーマンス向上）
-///   - セーブ/ロードシステム（設定・統計の永続化）
-///   - ポーズメニュー（ESCキー）
-///   - 設定メニュー（音量・画面設定）
-///
-/// Phase 2 新機能:
-///   - メタプログレッション（永続アップグレード）
-///   - ゴールドシステム（敵ドロップ・ショップ）
-///   - アンロックシステム（条件達成で解放）
-///   - 統計追跡の強化
+/// Phase 3 新機能:
+///   - 12種類の武器（ナイフ、斧、ムチ、雷、聖書、ニンニク、火の杖、ブーメラン等）
+///   - 16種類の敵（Bat、Ghost、Skeleton、Slime、Mage、Archer、Golem、Vampire等）
+///   - 6種類のキャラクター（騎士、魔法使い、ローグ、クレリック、ヴァンパイア、ネクロマンサー）
+///   - 4つのステージ（草原、森、墓地、城）
+///   - ステージごとのボス
 /// </summary>
 public class VampireSurvivorsMini : MonoBehaviour
 {
@@ -87,8 +69,12 @@ public class VampireSurvivorsMini : MonoBehaviour
         // セッションゴールドをリセット
         GoldCoin.ResetSessionGold();
 
-        // === Background ===
-        new GameObject("Background").AddComponent<Background>();
+        // === Stage Manager ===
+        var stageGo = new GameObject("StageManager");
+        stageGo.AddComponent<StageManager>();
+
+        // === Background（StageManagerが設定するので不要だが互換性のため残す） ===
+        // new GameObject("Background").AddComponent<Background>();
         new GameObject("AmbientFx").AddComponent<AmbientFx>();
 
         // === Player ===

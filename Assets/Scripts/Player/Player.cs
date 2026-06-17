@@ -36,13 +36,59 @@ public class Player : MonoBehaviour
     public float regenPerSec = 0f;
     float regenTimer;
 
+    [Header("キャラクター固有")]
+    public CharacterData characterData;
+    public float attackMultiplier = 1f;
+    public float lifesteal = 0f;
+
     void Awake()
     {
+        // キャラクターデータを適用
+        ApplyCharacterData();
+
         // メタプログレッションボーナスを適用
         ApplyMetaProgressionBonuses();
 
         hp = maxHp;
-        weapons.Add(new BoltWeapon()); // 初期武器
+
+        // 初期武器（キャラクターデータから）
+        AddStartingWeapon();
+    }
+
+    /// <summary>選択されたキャラクターのデータを適用</summary>
+    void ApplyCharacterData()
+    {
+        characterData = CharacterSelection.GetSelectedData();
+
+        maxHp = characterData.BaseMaxHp;
+        moveSpeed = characterData.BaseMoveSpeed;
+        attackMultiplier = characterData.BaseAttackMult;
+        critChance = characterData.BaseCritChance;
+        regenPerSec = characterData.BaseHpRegen;
+        lifesteal = characterData.BaseLifesteal;
+
+        // キャラクターの色を適用
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null)
+        {
+            sr.color = characterData.SpriteColor;
+        }
+    }
+
+    /// <summary>キャラクター固有の初期武器を追加</summary>
+    void AddStartingWeapon()
+    {
+        if (characterData.StartingWeapon == null)
+        {
+            weapons.Add(new BoltWeapon());
+            return;
+        }
+
+        var weapon = System.Activator.CreateInstance(characterData.StartingWeapon) as Weapon;
+        if (weapon != null)
+            weapons.Add(weapon);
+        else
+            weapons.Add(new BoltWeapon());
     }
 
     /// <summary>メタプログレッションの永続ボーナスを適用</summary>
@@ -134,11 +180,25 @@ public class Player : MonoBehaviour
 
     public int RollDamage(int baseDamage)
     {
+        // キャラクター固有の攻撃倍率を適用
+        float charMult = attackMultiplier;
+
         // メタプログレッションの攻撃力ボーナスを適用
-        float attackMult = MetaProgressionManager.Instance?.GetAttackMultiplier() ?? 1f;
-        int boostedDamage = Mathf.RoundToInt(baseDamage * attackMult);
+        float metaMult = MetaProgressionManager.Instance?.GetAttackMultiplier() ?? 1f;
+
+        int boostedDamage = Mathf.RoundToInt(baseDamage * charMult * metaMult);
 
         return critChance > 0f && Random.value < critChance ? boostedDamage * 2 : boostedDamage;
+    }
+
+    /// <summary>ダメージを与えた時にライフスティールを適用</summary>
+    public void OnDealDamage(int damage)
+    {
+        if (lifesteal > 0f && hp < maxHp)
+        {
+            int heal = Mathf.Max(1, Mathf.RoundToInt(damage * lifesteal));
+            hp = Mathf.Min(maxHp, hp + heal);
+        }
     }
 
     public void GainXp(int amount)
@@ -175,24 +235,23 @@ public class Player : MonoBehaviour
 
         // 未所持の新武器
         var ownedTypes = weapons.Select(w => w.GetType()).ToList();
-        if (!ownedTypes.Contains(typeof(OrbitWeapon)))
-        {
-            var w = new OrbitWeapon();
-            pool.Add(new UpgradeOption("新武器: " + w.Name, w.Description,
-                p => p.weapons.Add(w)));
-        }
-        if (!ownedTypes.Contains(typeof(AuraWeapon)))
-        {
-            var w = new AuraWeapon();
-            pool.Add(new UpgradeOption("新武器: " + w.Name, w.Description,
-                p => p.weapons.Add(w)));
-        }
-        if (!ownedTypes.Contains(typeof(CrossBoltWeapon)))
-        {
-            var w = new CrossBoltWeapon();
-            pool.Add(new UpgradeOption("新武器: " + w.Name, w.Description,
-                p => p.weapons.Add(w)));
-        }
+
+        // 基本武器（常に選択可能）
+        TryAddWeaponOption<OrbitWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<AuraWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<CrossBoltWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<KnifeWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<AxeWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<WhipWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<LightningWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<BibleWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<GarlicWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<FireWandWeapon>(pool, ownedTypes);
+        TryAddWeaponOption<BoomerangWeapon>(pool, ownedTypes);
+
+        // ボルトは初期武器として持っていない場合のみ
+        if (!ownedTypes.Contains(typeof(BoltWeapon)))
+            TryAddWeaponOption<BoltWeapon>(pool, ownedTypes);
 
         // 汎用強化（武器が全部MAXでも選択肢が3つ揃うようにする）
         pool.Add(new UpgradeOption("HP回復", "HPを30回復する",
@@ -243,5 +302,15 @@ public class Player : MonoBehaviour
     {
         lastUpgradeText = text;
         lastUpgradeTime = Time.time;
+    }
+
+    /// <summary>武器を選択肢プールに追加（未所持の場合のみ）</summary>
+    void TryAddWeaponOption<T>(List<UpgradeOption> pool, List<System.Type> ownedTypes) where T : Weapon, new()
+    {
+        if (ownedTypes.Contains(typeof(T))) return;
+
+        var w = new T();
+        pool.Add(new UpgradeOption("新武器: " + w.Name, w.Description,
+            p => p.weapons.Add(new T())));
     }
 }

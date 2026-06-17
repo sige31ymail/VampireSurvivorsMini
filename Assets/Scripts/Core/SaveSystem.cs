@@ -142,6 +142,33 @@ public class SaveSystem : MonoBehaviour
         SaveStatistics();
     }
 
+    /// <summary>ステージクリアを記録</summary>
+    public static void MarkStageCleared(StageType stageType)
+    {
+        if (Instance == null) return;
+
+        int index = (int)stageType;
+        if (index >= 0 && index < Instance.Statistics.StagesClearedFlags.Length)
+        {
+            Instance.Statistics.StagesClearedFlags[index] = true;
+            Instance.Statistics.TotalStagesCleared++;
+            Instance.SaveStatistics();
+        }
+    }
+
+    /// <summary>ステージがクリア済みか確認</summary>
+    public static bool IsStageCleared(StageType stageType)
+    {
+        if (Instance == null) return false;
+
+        int index = (int)stageType;
+        if (index >= 0 && index < Instance.Statistics.StagesClearedFlags.Length)
+        {
+            return Instance.Statistics.StagesClearedFlags[index];
+        }
+        return false;
+    }
+
     #endregion
 
     #region File I/O Helpers
@@ -250,15 +277,19 @@ public class StatisticsData
     public float TotalPlayTime = 0f;
     public int TotalKills = 0;
     public int TotalGoldEarned = 0;
+    public int TotalStagesCleared = 0;
 
     // ベスト記録
     public float BestSurvivalTime = 0f;
     public int BestKills = 0;
     public int BestLevel = 0;
 
-    // 敵撃破数（タイプ別、Phase 3で使用）
-    public int[] KillsByEnemyType = new int[16];
+    // ステージクリアフラグ
+    public bool[] StagesClearedFlags = new bool[8];
 
-    // 武器使用回数（Phase 3で使用）
+    // 敵撃破数（タイプ別）
+    public int[] KillsByEnemyType = new int[32];
+
+    // 武器使用回数
     public int[] WeaponUsageCount = new int[16];
 }

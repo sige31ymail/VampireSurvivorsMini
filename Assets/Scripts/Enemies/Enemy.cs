@@ -527,6 +527,15 @@ public class Enemy : MonoBehaviour
         // ボスドロップ
         if (IsBoss())
         {
+            // ボス撃破時の演出
+            CameraFollow.ShakeHuge();
+            VfxManager.FlashWhite();
+            VfxManager.SlowMotion(0.3f, 0.2f);
+
+            // ボスキル数を記録
+            if (SaveSystem.Instance != null)
+                SaveSystem.Instance.Statistics.TotalBossKills++;
+
             for (int i = 0; i < xpValue; i++)
             {
                 var offset = (Vector3)(Random.insideUnitCircle * 1.2f);

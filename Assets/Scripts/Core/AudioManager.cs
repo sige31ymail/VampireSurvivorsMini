@@ -10,6 +10,10 @@ public class AudioManager : MonoBehaviour
     AudioSource seSource;
 
     AudioClip hitClip, levelUpClip, dieClip, xpClip, gameOverClip;
+    AudioClip normalBgm, bossBgm, lowHpBgm;
+
+    bool isBossBgm;
+    bool isLowHpBgm;
 
     const int Rate = 44100;
 
@@ -17,6 +21,7 @@ public class AudioManager : MonoBehaviour
     const float C3 = 130.81f, G3 = 196.00f, A3 = 220.00f;
     const float C4 = 261.63f, E4 = 329.63f, G4 = 392.00f, A4 = 440.00f;
     const float C5 = 523.25f, D5 = 587.33f, E5 = 659.26f, G5 = 784.00f, A5 = 880.00f;
+    const float B4 = 493.88f, D4 = 293.66f, F4 = 349.23f;
 
     void Awake()
     {
@@ -38,7 +43,69 @@ public class AudioManager : MonoBehaviour
         xpClip       = BuildXp();
         gameOverClip = BuildGameOver();
 
-        bgmSource.clip = BuildBgm();
+        // BGMを生成
+        normalBgm = BuildBgm();
+        bossBgm = BuildBossBgm();
+        lowHpBgm = BuildLowHpBgm();
+
+        bgmSource.clip = normalBgm;
+        bgmSource.Play();
+    }
+
+    void Update()
+    {
+        if (GameState.GameOver) return;
+
+        // ボス戦BGM切り替え
+        bool bossPresent = false;
+        foreach (var enemy in GameState.Enemies)
+        {
+            if (enemy != null && IsBossType(enemy.type))
+            {
+                bossPresent = true;
+                break;
+            }
+        }
+
+        // ピンチBGM（HP低下時）
+        var player = FindObjectOfType<Player>();
+        bool lowHp = player != null && player.hp < player.maxHp * 0.25f;
+
+        // 優先度: ボス > ピンチ > 通常
+        if (bossPresent && !isBossBgm)
+        {
+            CrossfadeTo(bossBgm);
+            isBossBgm = true;
+            isLowHpBgm = false;
+        }
+        else if (!bossPresent && isBossBgm)
+        {
+            CrossfadeTo(lowHp ? lowHpBgm : normalBgm);
+            isBossBgm = false;
+            isLowHpBgm = lowHp;
+        }
+        else if (!isBossBgm && lowHp && !isLowHpBgm)
+        {
+            CrossfadeTo(lowHpBgm);
+            isLowHpBgm = true;
+        }
+        else if (!isBossBgm && !lowHp && isLowHpBgm)
+        {
+            CrossfadeTo(normalBgm);
+            isLowHpBgm = false;
+        }
+    }
+
+    bool IsBossType(EnemyType type)
+    {
+        return type == EnemyType.Boss || type == EnemyType.ForestBoss ||
+               type == EnemyType.GraveyardBoss || type == EnemyType.CastleBoss;
+    }
+
+    void CrossfadeTo(AudioClip clip)
+    {
+        if (bgmSource.clip == clip) return;
+        bgmSource.clip = clip;
         bgmSource.Play();
     }
 
@@ -51,17 +118,19 @@ public class AudioManager : MonoBehaviour
     public static void PlayGameOver()
     {
         if (Instance == null) return;
-        Instance.bgmSource.Stop(); // BGMを止めてゲームオーバーSEを鳴らす
+        Instance.bgmSource.Stop();
         Instance.seSource.PlayOneShot(Instance.gameOverClip);
     }
 
     public void RestartBgm()
     {
-        bgmSource.Stop();
+        isBossBgm = false;
+        isLowHpBgm = false;
+        bgmSource.clip = normalBgm;
         bgmSource.Play();
     }
 
-    // ── BGM ───────────────────────────────────
+    // ── 通常BGM ───────────────────────────────────
     AudioClip BuildBgm()
     {
         float e = 60f / 145f / 2f; // 8分音符（BPM145）
@@ -78,9 +147,50 @@ public class AudioManager : MonoBehaviour
             C3, C3, G3, G3,  A3, A3, G3, G3,
         };
 
-        return Mix("BGM",
-            Sequence(mel, e, 0.28f, SquareWave),
+        return Mix("BGM", Sequence(mel, e, 0.28f, SquareWave),
             Sequence(bas, q, 0.18f, TriangleWave));
+    }
+
+    // ── ボス戦BGM（緊迫感のある速いテンポ） ───────────────
+    AudioClip BuildBossBgm()
+    {
+        float e = 60f / 180f / 2f; // BPM180
+        float q = 60f / 180f;
+
+        float[] mel = {
+            A4, 0, A4, 0, A4, C5, D5, E5,
+            E5, 0, D5, 0, C5, A4, 0, 0,
+            A4, 0, A4, 0, A4, C5, E5, G5,
+            G5, 0, E5, 0, D5, C5, A4, 0,
+        };
+        float[] bas = {
+            A3, A3, A3, A3, A3, A3, A3, A3,
+            C3, C3, G3, G3, A3, A3, E4, E4,
+        };
+
+        return Mix("BossBGM", Sequence(mel, e, 0.32f, SquareWave),
+            Sequence(bas, q, 0.22f, TriangleWave));
+    }
+
+    // ── ピンチBGM（警告音的なテンション） ───────────────────
+    AudioClip BuildLowHpBgm()
+    {
+        float e = 60f / 160f / 2f; // BPM160
+        float q = 60f / 160f;
+
+        float[] mel = {
+            C5, 0, E5, 0, C5, 0, E5, 0,
+            D5, 0, F4, 0, D5, 0, F4, 0,
+            C5, E5, G5, 0, E5, C5, 0, 0,
+            D5, F4, A4, 0, F4, D4, 0, 0,
+        };
+        float[] bas = {
+            C3, C3, C3, C3, D4, D4, D4, D4,
+            C3, C3, G3, G3, D4, D4, A3, A3,
+        };
+
+        return Mix("LowHpBGM", Sequence(mel, e, 0.25f, SquareWave),
+            Sequence(bas, q, 0.20f, TriangleWave));
     }
 
     // ── SE builders ───────────────────────────

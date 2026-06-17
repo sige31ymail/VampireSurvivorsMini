@@ -56,6 +56,10 @@ public class VampireSurvivorsMini : MonoBehaviour
         if (UnlockManager.Instance == null)
             new GameObject("UnlockManager").AddComponent<UnlockManager>();
 
+        // AchievementManager（シーンをまたいで永続）
+        if (AchievementManager.Instance == null)
+            new GameObject("AchievementManager").AddComponent<AchievementManager>();
+
         // 設定を適用
         ApplySavedSettings();
 
@@ -95,6 +99,14 @@ public class VampireSurvivorsMini : MonoBehaviour
         // === Pause Menu ===
         var pauseGo = new GameObject("PauseMenu");
         pauseGo.AddComponent<PauseMenu>().player = player;
+
+        // === Tutorial ===
+        var tutorialGo = new GameObject("TutorialManager");
+        tutorialGo.AddComponent<TutorialManager>();
+
+        // === VFX Manager ===
+        var vfxGo = new GameObject("VfxManager");
+        vfxGo.AddComponent<VfxManager>();
 
         // === Reset Game State ===
         GameState.Reset();
@@ -234,6 +246,9 @@ public class VampireSurvivorsMini : MonoBehaviour
             {
                 pendingUnlocks = UnlockManager.Instance.CheckUnlocks();
             }
+
+            // 実績をチェック
+            AchievementManager.Instance?.CheckAchievements();
         }
     }
 

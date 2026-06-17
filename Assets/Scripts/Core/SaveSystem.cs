@@ -278,6 +278,7 @@ public class StatisticsData
     public int TotalKills = 0;
     public int TotalGoldEarned = 0;
     public int TotalStagesCleared = 0;
+    public int TotalBossKills = 0;
 
     // ベスト記録
     public float BestSurvivalTime = 0f;
@@ -292,4 +293,21 @@ public class StatisticsData
 
     // 武器使用回数
     public int[] WeaponUsageCount = new int[16];
+
+    // ユニーク武器使用数（実績用）
+    public int UniqueWeaponsUsed = 0;
+    public bool[] WeaponsEverUsed = new bool[16];
+
+    /// <summary>武器使用を記録</summary>
+    public void RecordWeaponUsed(int weaponIndex)
+    {
+        if (weaponIndex < 0 || weaponIndex >= WeaponsEverUsed.Length) return;
+        if (!WeaponsEverUsed[weaponIndex])
+        {
+            WeaponsEverUsed[weaponIndex] = true;
+            UniqueWeaponsUsed++;
+        }
+        if (weaponIndex < WeaponUsageCount.Length)
+            WeaponUsageCount[weaponIndex]++;
+    }
 }

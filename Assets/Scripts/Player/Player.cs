@@ -167,14 +167,30 @@ public class Player : MonoBehaviour
     public void TakeDamage(int damage)
     {
         if (invincibleTimer > 0f || GameState.GameOver) return;
-        hp -= Mathf.Max(1, damage - armor); // 最低1ダメージ
+        int actualDamage = Mathf.Max(1, damage - armor);
+        hp -= actualDamage;
         invincibleTimer = 0.5f;
         AudioManager.PlayHit();
+
+        // 画面シェイク（ダメージ量に応じて強度を変える）
+        if (actualDamage >= 20)
+        {
+            CameraFollow.ShakeMedium();
+            VfxManager.DamageVignette(0.7f);
+        }
+        else
+        {
+            CameraFollow.ShakeSmall();
+            VfxManager.DamageVignette(0.4f);
+        }
+
         if (hp <= 0)
         {
             hp = 0;
             GameState.GameOver = true;
             AudioManager.PlayGameOver();
+            CameraFollow.ShakeLarge();
+            VfxManager.FlashRed();
         }
     }
 
@@ -213,8 +229,9 @@ public class Player : MonoBehaviour
             xp -= xpToNext;
             level++;
             xpToNext = 5 + level * 3;
-            pendingChoices++; // 3択を表示（複数レベルアップ時は連続で表示）
+            pendingChoices++;
             AudioManager.PlayLevelUp();
+            VfxManager.FlashWhite();
         }
     }
 

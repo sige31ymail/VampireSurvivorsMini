@@ -1,8 +1,14 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>敵タイプごとの見た目を子オブジェクトで構成する</summary>
 public class EnemyVisuals : MonoBehaviour
 {
+    List<SpriteRenderer> spriteRenderers = new List<SpriteRenderer>();
+    List<Color> originalColors = new List<Color>();
+    float flashTimer;
+    const float FlashDuration = 0.08f;
+
     public void Build(EnemyType type)
     {
         switch (type)
@@ -126,5 +132,67 @@ public class EnemyVisuals : MonoBehaviour
         sr.sprite       = sprite;
         sr.color        = color;
         sr.sortingOrder = order;
+    }
+
+    /// <summary>ビルド後にスプライトレンダラーをキャッシュ</summary>
+    public void CacheRenderers()
+    {
+        spriteRenderers.Clear();
+        originalColors.Clear();
+
+        var parentSr = GetComponent<SpriteRenderer>();
+        if (parentSr != null)
+        {
+            spriteRenderers.Add(parentSr);
+            originalColors.Add(parentSr.color);
+        }
+
+        foreach (Transform child in transform)
+        {
+            var sr = child.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                spriteRenderers.Add(sr);
+                originalColors.Add(sr.color);
+            }
+        }
+    }
+
+    /// <summary>ヒットフラッシュを開始</summary>
+    public void Flash()
+    {
+        if (spriteRenderers.Count == 0) CacheRenderers();
+        flashTimer = FlashDuration;
+
+        foreach (var sr in spriteRenderers)
+        {
+            if (sr != null) sr.color = Color.white;
+        }
+    }
+
+    void Update()
+    {
+        if (flashTimer <= 0) return;
+
+        flashTimer -= Time.deltaTime;
+        if (flashTimer <= 0)
+        {
+            for (int i = 0; i < spriteRenderers.Count; i++)
+            {
+                if (spriteRenderers[i] != null)
+                    spriteRenderers[i].color = originalColors[i];
+            }
+        }
+    }
+
+    /// <summary>リセット時にフラッシュ状態もリセット</summary>
+    public void ResetFlash()
+    {
+        flashTimer = 0;
+        for (int i = 0; i < spriteRenderers.Count; i++)
+        {
+            if (spriteRenderers[i] != null)
+                spriteRenderers[i].color = originalColors[i];
+        }
     }
 }

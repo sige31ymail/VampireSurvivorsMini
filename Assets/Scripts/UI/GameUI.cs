@@ -1,88 +1,142 @@
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using TMPro;
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
 using UnityEngine.InputSystem; // 新Input System使用時
 #endif
 
-/// <summary>OnGUIによる簡易UI（Canvas設定不要）</summary>
+/// <summary>
+/// ゲーム中UI。HUD は uGUI(TextMeshPro)で構築。
+/// レベルアップ3択・リザルトは段階的移行中のため当面 OnGUI（IMGUIは常にuGUIの上に描かれる）。
+/// </summary>
 public class GameUI : MonoBehaviour
 {
     public Player player;
-    GUIStyle labelStyle, bigStyle, toastStyle, buttonStyle, resultStyle;
+
+    // ── HUD(uGUI) ─────────────────────────
+    Canvas hudCanvas;
+    Image hpFill, xpFill;
+    TextMeshProUGUI hpLabel, xpLabel, infoLabel, goldLabel, toastLabel;
+    TextMeshProUGUI[] weaponLabels;
+    const int MaxWeaponRows = 12;
+
+    // ── OnGUI(レベルアップ/リザルト用、移行までの暫定) ──
+    GUIStyle bigStyle, toastStyleGUI, buttonStyle, resultStyle;
     bool isTransitioning;
 
-    void OnGUI()
+    void Start()
     {
-        if (labelStyle == null)
-        {
-            labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 18 };
-            labelStyle.normal.textColor = Color.white;
-            bigStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 48,
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
-            bigStyle.normal.textColor = Color.white;
-            toastStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 26,
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
-            toastStyle.normal.textColor = new Color(1f, 0.9f, 0.3f);
-            buttonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 18,
-                alignment = TextAnchor.MiddleCenter,
-                wordWrap = true
-            };
-            resultStyle = new GUIStyle(GUI.skin.label) { fontSize = 22 };
-            resultStyle.normal.textColor = Color.white;
-        }
+        BuildHud();
+    }
 
-        if (player == null) return;
+    // ───────────────────────────────────────
+    //  HUD 構築
+    // ───────────────────────────────────────
+    void BuildHud()
+    {
+        hudCanvas = UIKit.CreateCanvas("HUDCanvas", 100);
+        var root = hudCanvas.transform;
 
-        // ポーズ中はHUDを描画しない（ポーズメニューが表示される）
-        if (PauseMenu.IsPaused) return;
+        const float margin = 32f;
+        var topLeft = new Vector2(0f, 1f);
 
         // HPバー
-        DrawBar(new Rect(20, 20, 240, 22),
-            (float)player.hp / player.maxHp,
-            new Color(0.9f, 0.25f, 0.25f), $"HP {player.hp}/{player.maxHp}");
+        hpFill = UIKit.Bar(root, UITheme.Hp, "HpBar");
+        UIKit.SetRect(hpFill.transform.parent.GetComponent<Image>(), topLeft, topLeft, topLeft,
+            new Vector2(margin, -margin), new Vector2(460f, 44f));
+        hpLabel = UIKit.Label(hpFill.transform.parent, "HP", 24f, UITheme.TextMain, TextAlignmentOptions.Center, "HpText");
+        UIKit.Stretch(hpLabel);
 
         // XPバー
-        DrawBar(new Rect(20, 48, 240, 16),
-            (float)player.xp / player.xpToNext,
-            new Color(0.4f, 0.9f, 0.5f), $"Lv {player.level}");
+        xpFill = UIKit.Bar(root, UITheme.Xp, "XpBar");
+        UIKit.SetRect(xpFill.transform.parent.GetComponent<Image>(), topLeft, topLeft, topLeft,
+            new Vector2(margin, -(margin + 54f)), new Vector2(460f, 30f));
+        xpLabel = UIKit.Label(xpFill.transform.parent, "Lv 1", 20f, UITheme.TextMain, TextAlignmentOptions.Center, "XpText");
+        UIKit.Stretch(xpLabel);
 
-        // 経過時間、キル数、ゴールド
+        // 時間・キル
+        infoLabel = UIKit.Label(root, "", 30f, UITheme.TextMain, TextAlignmentOptions.Left, "Info");
+        UIKit.SetRect(infoLabel, topLeft, topLeft, topLeft, new Vector2(margin, -(margin + 94f)), new Vector2(640f, 40f));
+
+        // ゴールド
+        goldLabel = UIKit.Label(root, "", 28f, UITheme.Gold, TextAlignmentOptions.Left, "Gold");
+        UIKit.SetRect(goldLabel, topLeft, topLeft, topLeft, new Vector2(margin, -(margin + 134f)), new Vector2(460f, 36f));
+
+        // 武器リスト
+        weaponLabels = new TextMeshProUGUI[MaxWeaponRows];
+        for (int i = 0; i < MaxWeaponRows; i++)
+        {
+            weaponLabels[i] = UIKit.Label(root, "", 24f, UITheme.TextDim, TextAlignmentOptions.Left, "Weapon" + i);
+            UIKit.SetRect(weaponLabels[i], topLeft, topLeft, topLeft,
+                new Vector2(margin, -(margin + 180f + i * 34f)), new Vector2(560f, 30f));
+            weaponLabels[i].gameObject.SetActive(false);
+        }
+
+        // レベルアップ獲得トースト（中央上）
+        var topCenter = new Vector2(0.5f, 1f);
+        toastLabel = UIKit.Label(root, "", 40f, UITheme.Gold, TextAlignmentOptions.Center, "Toast");
+        toastLabel.fontStyle = FontStyles.Bold;
+        UIKit.SetRect(toastLabel, topCenter, topCenter, topCenter, new Vector2(0f, -170f), new Vector2(1200f, 60f));
+        toastLabel.gameObject.SetActive(false);
+    }
+
+    void Update()
+    {
+        if (player == null || hudCanvas == null) return;
+
+        // ポーズ中はHUDを隠す（ポーズメニューが表示される）
+        bool show = !PauseMenu.IsPaused;
+        if (hudCanvas.gameObject.activeSelf != show)
+            hudCanvas.gameObject.SetActive(show);
+        if (!show) return;
+
+        // HP
+        hpFill.fillAmount = player.maxHp > 0 ? (float)player.hp / player.maxHp : 0f;
+        hpLabel.text = $"HP {player.hp}/{player.maxHp}";
+
+        // XP
+        xpFill.fillAmount = player.xpToNext > 0 ? (float)player.xp / player.xpToNext : 0f;
+        xpLabel.text = $"Lv {player.level}";
+
+        // 時間・キル
         int t = (int)GameState.ElapsedTime;
-        GUI.Label(new Rect(20, 72, 300, 30),
-            $"{t / 60:00}:{t % 60:00}   Kills: {GameState.KillCount}", labelStyle);
+        infoLabel.text = $"{t / 60:00}:{t % 60:00}   Kills {GameState.KillCount}";
 
-        // ゴールド表示
-        var goldStyle = new GUIStyle(labelStyle);
-        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        GUI.Label(new Rect(20, 96, 200, 26), $"Gold: {GoldCoin.SessionGold}", goldStyle);
+        // ゴールド
+        goldLabel.text = $"Gold {GoldCoin.SessionGold}";
 
-        // 所持武器一覧
-        float y = 124;
-        foreach (var w in player.weapons)
+        // 武器
+        for (int i = 0; i < MaxWeaponRows; i++)
         {
-            string max = w.IsMaxLevel ? " (MAX)" : "";
-            GUI.Label(new Rect(20, y, 320, 26), $"・{w.Name} Lv{w.level}{max}", labelStyle);
-            y += 24;
+            if (i < player.weapons.Count)
+            {
+                var w = player.weapons[i];
+                weaponLabels[i].text = $"・{w.Name} Lv{w.level}{(w.IsMaxLevel ? " (MAX)" : "")}";
+                if (!weaponLabels[i].gameObject.activeSelf) weaponLabels[i].gameObject.SetActive(true);
+            }
+            else if (weaponLabels[i].gameObject.activeSelf)
+            {
+                weaponLabels[i].gameObject.SetActive(false);
+            }
         }
 
-        // レベルアップ獲得トースト（2.5秒間表示）
-        if (Time.time - player.lastUpgradeTime < 2.5f)
-        {
-            var rect = new Rect(0, Screen.height * 0.25f, Screen.width, 40);
-            GUI.Label(rect, player.lastUpgradeText, toastStyle);
-        }
+        // 獲得トースト（2.5秒）
+        bool toast = Time.time - player.lastUpgradeTime < 2.5f && !string.IsNullOrEmpty(player.lastUpgradeText);
+        if (toast) toastLabel.text = player.lastUpgradeText;
+        if (toastLabel.gameObject.activeSelf != toast) toastLabel.gameObject.SetActive(toast);
+    }
 
-        // レベルアップ3択パネル
+    // ───────────────────────────────────────
+    //  OnGUI（レベルアップ3択・リザルト：段階3/4で uGUI 化予定）
+    // ───────────────────────────────────────
+    void OnGUI()
+    {
+        if (player == null) return;
+        if (PauseMenu.IsPaused) return;
+
+        if (bigStyle == null) InitGuiStyles();
+
         if (player.currentOptions != null && !GameState.GameOver)
             DrawLevelUpPanel();
 
@@ -90,11 +144,27 @@ public class GameUI : MonoBehaviour
             DrawResultScreen();
     }
 
+    void InitGuiStyles()
+    {
+        bigStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 48, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold
+        };
+        bigStyle.normal.textColor = Color.white;
+        toastStyleGUI = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 26, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold
+        };
+        toastStyleGUI.normal.textColor = new Color(1f, 0.9f, 0.3f);
+        buttonStyle = new GUIStyle(GUI.skin.button) { fontSize = 18, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+        resultStyle = new GUIStyle(GUI.skin.label) { fontSize = 22 };
+        resultStyle.normal.textColor = Color.white;
+    }
+
     void DrawResultScreen()
     {
         if (isTransitioning) return;
 
-        // 背景オーバーレイ
         GUI.color = new Color(0, 0, 0, 0.85f);
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
@@ -102,10 +172,8 @@ public class GameUI : MonoBehaviour
         float cx = Screen.width / 2f;
         float cy = Screen.height / 2f;
 
-        // ヘッダー
         GUI.Label(new Rect(0, cy - 210, Screen.width, 70), "GAME OVER", bigStyle);
 
-        // ステータスパネル
         float panelW = Mathf.Min(360f, Screen.width - 40f);
         float lineH = 34f;
         float panelH = 136f + player.weapons.Count * lineH + 20f;
@@ -123,7 +191,6 @@ public class GameUI : MonoBehaviour
         GUI.Label(new Rect(lx, ly + 34, panelW - 20, lineH), $"撃破数       {GameState.KillCount}", resultStyle);
         GUI.Label(new Rect(lx, ly + 68, panelW - 20, lineH), $"到達レベル   {player.level}", resultStyle);
 
-        // 獲得ゴールド
         var goldResultStyle = new GUIStyle(resultStyle);
         goldResultStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
         GUI.Label(new Rect(lx, ly + 102, panelW - 20, lineH), $"獲得ゴールド +{GoldCoin.SessionGold}", goldResultStyle);
@@ -132,22 +199,18 @@ public class GameUI : MonoBehaviour
         {
             var w = player.weapons[i];
             string prefix = i == 0 ? "武器         " : "             ";
-            GUI.Label(new Rect(lx, ly + 136 + i * lineH, panelW - 20, lineH),
-                prefix + $"{w.Name} Lv{w.level}", resultStyle);
+            GUI.Label(new Rect(lx, ly + 136 + i * lineH, panelW - 20, lineH), prefix + $"{w.Name} Lv{w.level}", resultStyle);
         }
 
-        // ボタン
         float btnW = 160f, btnH = 52f, btnGap = 20f;
         float btnY = panelY + panelH + 24f;
         float btnX = cx - (btnW * 2 + btnGap) / 2f;
 
-        if (GUI.Button(new Rect(btnX,              btnY, btnW, btnH), "もう一度 [R]", buttonStyle))
+        if (GUI.Button(new Rect(btnX,                  btnY, btnW, btnH), "もう一度 [R]", buttonStyle))
             Transition(SceneManager.GetActiveScene().buildIndex);
-
         if (GUI.Button(new Rect(btnX + btnW + btnGap, btnY, btnW, btnH), "タイトルへ", buttonStyle))
             Transition("TitleScene");
 
-        // Rキーでも即リスタート
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
         if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
 #else
@@ -156,42 +219,13 @@ public class GameUI : MonoBehaviour
             Transition(SceneManager.GetActiveScene().buildIndex);
     }
 
-    void Transition(string sceneName)
-    {
-        isTransitioning = true;
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(sceneName);
-    }
-
-    void Transition(int buildIndex)
-    {
-        isTransitioning = true;
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(buildIndex);
-    }
-
-    void DrawBar(Rect rect, float ratio, Color color, string text)
-    {
-        GUI.color = new Color(0, 0, 0, 0.6f);
-        GUI.DrawTexture(rect, Texture2D.whiteTexture);
-        GUI.color = color;
-        var fill = rect;
-        fill.width *= Mathf.Clamp01(ratio);
-        GUI.DrawTexture(fill, Texture2D.whiteTexture);
-        GUI.color = Color.white;
-        GUI.Label(new Rect(rect.x + 6, rect.y, rect.width, rect.height), text, labelStyle);
-    }
-
-    /// <summary>レベルアップ時の3択パネル（クリック or 1/2/3キーで選択）</summary>
     void DrawLevelUpPanel()
     {
-        // 画面全体を暗くする
         GUI.color = new Color(0, 0, 0, 0.7f);
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        GUI.Label(new Rect(0, Screen.height * 0.15f, Screen.width, 60),
-            "LEVEL UP!", bigStyle);
+        GUI.Label(new Rect(0, Screen.height * 0.15f, Screen.width, 60), "LEVEL UP!", bigStyle);
 
         float panelW = Mathf.Min(420f, Screen.width - 40f);
         float panelH = 80f;
@@ -206,11 +240,10 @@ public class GameUI : MonoBehaviour
             if (GUI.Button(rect, $"[{i + 1}] {opt.title}\n{opt.desc}", buttonStyle))
             {
                 player.ChooseOption(i);
-                return; // 選択後はパネルが消えるので即終了
+                return;
             }
         }
 
-        // キーボード(1/2/3)でも選択可能
         int key = GetNumberKeyPressed();
         if (key >= 0) player.ChooseOption(key);
     }
@@ -229,5 +262,17 @@ public class GameUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) return 2;
 #endif
         return -1;
+    }
+
+    void Transition(string sceneName)
+    {
+        isTransitioning = true;
+        ScreenFader.Get().FadeToScene(sceneName);
+    }
+
+    void Transition(int buildIndex)
+    {
+        isTransitioning = true;
+        ScreenFader.Get().FadeToScene(buildIndex);
     }
 }

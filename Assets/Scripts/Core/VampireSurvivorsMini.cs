@@ -83,6 +83,9 @@ public class VampireSurvivorsMini : MonoBehaviour
         // new GameObject("Background").AddComponent<Background>();
         new GameObject("AmbientFx").AddComponent<AmbientFx>();
 
+        // === Screen Vignette（四隅を暗くして空気感を出す） ===
+        new GameObject("ScreenVignette").AddComponent<ScreenVignette>();
+
         // === Player ===
         var playerGo = new GameObject("Player");
         playerGo.transform.localScale = Vector3.one * 0.6f;

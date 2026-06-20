@@ -17,7 +17,7 @@ public static class GroundShadow
     /// <param name="yOffset">足元へのオフセット（親ローカル単位、通常マイナス）</param>
     /// <param name="alpha">影の濃さ</param>
     public static void Attach(Transform parent, float width, float height,
-                              float yOffset, float alpha = 0.28f)
+                              float yOffset, float alpha = 0.42f)
     {
         var go = new GameObject("Shadow");
         go.transform.SetParent(parent, false);

@@ -202,8 +202,10 @@ public class StageManager : MonoBehaviour
             var groundGo = new GameObject("Ground");
             var bg = groundGo.AddComponent<Background>();
             bg.resourceName = tileResource;
-            // 地面色をうっすら掛けてステージごとの色味を残す（白に近いほど元のタイル色のまま）
-            bg.tint = Color.Lerp(Color.white, CurrentStage.GroundColor, 0.25f);
+            // 地面を暗く＆やや彩度を落とす（リッチなキャラを引き立て、浮きを抑える）。
+            // 暗転基準色 × ステージ色 で、ステージごとの色味を残しつつ全体トーンを下げる。
+            var dark = new Color(0.45f, 0.5f, 0.45f);
+            bg.tint = dark * Color.Lerp(Color.white, CurrentStage.GroundColor, 0.5f);
             groundParent = groundGo.transform;
             return;
         }

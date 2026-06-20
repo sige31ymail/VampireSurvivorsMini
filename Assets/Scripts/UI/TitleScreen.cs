@@ -2,11 +2,10 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 
-/// <summary>タイトル画面UI（TitleSceneに配置）</summary>
+/// <summary>タイトル画面UI（TitleSceneに配置）。見た目は UISkin で統一。</summary>
 public class TitleScreen : MonoBehaviour
 {
-    GUIStyle titleStyle, subtitleStyle, buttonStyle, smallButtonStyle, infoStyle, statsStyle;
-    GUIStyle selectedStyle, lockedStyle, charNameStyle;
+    GUIStyle titleStyle, subtitleStyle, infoStyle, statsStyle, charNameStyle, lockedStyle;
     SettingsMenu settingsMenu;
     UpgradeShopUI upgradeShopUI;
 
@@ -23,35 +22,25 @@ public class TitleScreen : MonoBehaviour
         var cam = Camera.main;
         if (cam != null)
         {
-            cam.backgroundColor = new Color(0.08f, 0.08f, 0.12f);
+            cam.backgroundColor = new Color(0.07f, 0.06f, 0.10f);
             cam.clearFlags = CameraClearFlags.SolidColor;
         }
 
-        // SaveSystem の初期化（タイトル画面から開始した場合）
         if (SaveSystem.Instance == null)
             new GameObject("SaveSystem").AddComponent<SaveSystem>();
-
-        // AudioManager の初期化
         if (AudioManager.Instance == null)
             new GameObject("AudioManager").AddComponent<AudioManager>();
-
-        // MetaProgressionManager の初期化
         if (MetaProgressionManager.Instance == null)
             new GameObject("MetaProgressionManager").AddComponent<MetaProgressionManager>();
-
-        // UnlockManager の初期化
         if (UnlockManager.Instance == null)
             new GameObject("UnlockManager").AddComponent<UnlockManager>();
 
-        // UIコンポーネントを追加
         settingsMenu = gameObject.AddComponent<SettingsMenu>();
         upgradeShopUI = gameObject.AddComponent<UpgradeShopUI>();
 
-        // キャラクターとステージのデータを取得
         characters = CharacterData.GetAllCharacters();
         stages = StageData.GetAllStages();
 
-        // 現在の選択を反映
         selectedCharIndex = characters.FindIndex(c => c.Type == CharacterSelection.SelectedCharacter);
         selectedStageIndex = stages.FindIndex(s => s.Type == StageSelection.SelectedStage);
         if (selectedCharIndex < 0) selectedCharIndex = 0;
@@ -60,156 +49,114 @@ public class TitleScreen : MonoBehaviour
 
     void OnGUI()
     {
+        UISkin.Init();
         if (titleStyle == null) InitStyles();
 
-        // 設定メニューまたはアップグレードショップが表示中は他のUIを描画しない
         if (settingsMenu != null && settingsMenu.IsVisible) return;
         if (upgradeShopUI != null && upgradeShopUI.IsVisible) return;
 
         switch (menuState)
         {
-            case MenuState.Main:
-                DrawMainMenu();
-                break;
-            case MenuState.CharacterSelect:
-                DrawCharacterSelect();
-                break;
-            case MenuState.StageSelect:
-                DrawStageSelect();
-                break;
-            case MenuState.Stats:
-                DrawStatsScreen();
-                break;
+            case MenuState.Main:            DrawMainMenu();       break;
+            case MenuState.CharacterSelect: DrawCharacterSelect(); break;
+            case MenuState.StageSelect:     DrawStageSelect();     break;
+            case MenuState.Stats:           DrawStatsScreen();     break;
         }
     }
 
+    // ───────────────────────────────────────
     void DrawMainMenu()
     {
         float cx = Screen.width / 2f;
         float cy = Screen.height / 2f;
 
-        GUI.Label(new Rect(0, cy - 180, Screen.width, 90), "Vampire Survivors Mini", titleStyle);
-        GUI.Label(new Rect(0, cy - 90, Screen.width, 40), "生き残れ、強くなれ", subtitleStyle);
+        UISkin.ShadowLabel(new Rect(0, cy - 200, Screen.width, 90), "Vampire Survivors Mini", titleStyle);
+        UISkin.ShadowLabel(new Rect(0, cy - 110, Screen.width, 40), "生き残れ、強くなれ", subtitleStyle);
 
-        // 選択中のキャラクターとステージを表示
         var charData = characters[selectedCharIndex];
         var stageData = stages[selectedStageIndex];
-        string selectionInfo = $"{charData.Name} / {stageData.Name}";
-        GUI.Label(new Rect(0, cy - 50, Screen.width, 30), selectionInfo, infoStyle);
+        UISkin.ShadowLabel(new Rect(0, cy - 64, Screen.width, 30), $"{charData.Name} / {stageData.Name}", infoStyle);
 
-        float btnW = 220f, btnH = 55f;
-        float smallBtnW = 100f, smallBtnH = 42f;
+        float y = cy - 16f;
         float btnGap = 10f;
-        float y = cy;
 
-        // Play ボタン
-        if (GUI.Button(new Rect(cx - btnW / 2f, y, btnW, btnH), "PLAY", buttonStyle))
+        // PLAY（プライマリ）
+        float playW = 240f, playH = 60f;
+        if (UISkin.PrimaryButton2(new Rect(cx - playW / 2f, y, playW, playH), "PLAY"))
         {
             CharacterSelection.SelectedCharacter = charData.Type;
             StageSelection.SelectedStage = stageData.Type;
             SceneManager.LoadScene("SampleScene");
         }
-        y += btnH + 10;
+        y += playH + 12f;
 
-        // Character / Stage 選択ボタン
-        float selectBtnW = 140f, selectBtnH = 45f;
-        float totalSelectW = selectBtnW * 2 + btnGap;
-        float selectX = cx - totalSelectW / 2f;
-
-        if (GUI.Button(new Rect(selectX, y, selectBtnW, selectBtnH), "Character", smallButtonStyle))
-        {
+        // Character / Stage
+        float selW = 150f, selH = 46f;
+        float selX = cx - (selW * 2 + btnGap) / 2f;
+        if (UISkin.Button2(new Rect(selX, y, selW, selH), "キャラクター"))
             menuState = MenuState.CharacterSelect;
-        }
-        if (GUI.Button(new Rect(selectX + selectBtnW + btnGap, y, selectBtnW, selectBtnH), "Stage", smallButtonStyle))
-        {
+        if (UISkin.Button2(new Rect(selX + selW + btnGap, y, selW, selH), "ステージ"))
             menuState = MenuState.StageSelect;
-        }
-        y += selectBtnH + 10;
+        y += selH + 10f;
 
-        // Upgrades ボタン
-        float shopBtnW = 180f, shopBtnH = 45f;
-        if (GUI.Button(new Rect(cx - shopBtnW / 2f, y, shopBtnW, shopBtnH), "Upgrades", smallButtonStyle))
-        {
+        // Upgrades
+        float shopW = 200f, shopH = 46f;
+        if (UISkin.Button2(new Rect(cx - shopW / 2f, y, shopW, shopH), "アップグレード"))
             upgradeShopUI?.Show();
-        }
-        y += shopBtnH + 5;
+        y += shopH + 8f;
 
-        // ゴールド表示
+        // ゴールド
         int gold = MetaProgressionManager.Instance?.Gold ?? 0;
-        var goldStyle = new GUIStyle(infoStyle);
-        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        goldStyle.fontSize = 16;
-        GUI.Label(new Rect(0, y, Screen.width, 25), $"Gold: {gold}", goldStyle);
-        y += 30;
+        UISkin.ShadowLabel(new Rect(0, y, Screen.width, 26), $"Gold {gold}", goldInfoStyle);
+        y += 32f;
 
-        // Settings, Stats ボタン
-        float totalSmallW = smallBtnW * 2 + btnGap;
-        float smallBtnX = cx - totalSmallW / 2f;
-
-        if (GUI.Button(new Rect(smallBtnX, y, smallBtnW, smallBtnH), "Settings", smallButtonStyle))
-        {
+        // Settings / Stats
+        float smW = 110f, smH = 44f;
+        float smX = cx - (smW * 2 + btnGap) / 2f;
+        if (UISkin.Button2(new Rect(smX, y, smW, smH), "設定"))
             settingsMenu?.Show();
-        }
-
-        if (GUI.Button(new Rect(smallBtnX + smallBtnW + btnGap, y, smallBtnW, smallBtnH), "Stats", smallButtonStyle))
-        {
+        if (UISkin.Button2(new Rect(smX + smW + btnGap, y, smW, smH), "記録"))
             menuState = MenuState.Stats;
-        }
-        y += smallBtnH + 15;
+        y += smH + 16f;
 
-        // 操作説明
-        GUI.Label(new Rect(0, y, Screen.width, 24), "WASD / 矢印キー で移動　攻撃は自動", infoStyle);
-        GUI.Label(new Rect(0, y + 24, Screen.width, 24), "ESC でポーズ　レベルアップ時: 1/2/3 キーで選択", infoStyle);
+        UISkin.ShadowLabel(new Rect(0, y, Screen.width, 24), "WASD / 矢印キー で移動　攻撃は自動", infoStyle);
+        UISkin.ShadowLabel(new Rect(0, y + 24, Screen.width, 24), "ESC でポーズ　レベルアップ時: 1/2/3 キーで選択", infoStyle);
 
-        // バージョン表示
-        GUI.Label(new Rect(10, Screen.height - 30, 200, 25), "v0.7.0 (Phase 3)", infoStyle);
+        UISkin.ShadowLabel(new Rect(12, Screen.height - 30, 200, 25), "v0.7.0 (Phase 3)", infoStyle);
     }
 
+    // ───────────────────────────────────────
     void DrawCharacterSelect()
     {
-        // 背景オーバーレイ
-        GUI.color = new Color(0, 0, 0, 0.92f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.DimScreen(0.9f);
 
         float cx = Screen.width / 2f;
         float startY = Screen.height * 0.08f;
 
-        // タイトル
-        var headerStyle = new GUIStyle(titleStyle);
-        headerStyle.fontSize = 36;
-        GUI.Label(new Rect(0, startY, Screen.width, 50), "CHARACTER SELECT", headerStyle);
+        UISkin.ShadowLabel(new Rect(0, startY, Screen.width, 50), "CHARACTER SELECT", UISkin.Title);
 
-        float y = startY + 70;
-        float cardW = 160f, cardH = 180f;
-        float cardGap = 15f;
+        float y = startY + 76;
+        float cardW = 160f, cardH = 184f, cardGap = 16f;
         int cols = Mathf.Min(characters.Count, 4);
         float totalW = cols * cardW + (cols - 1) * cardGap;
         float startX = cx - totalW / 2f;
 
         for (int i = 0; i < characters.Count; i++)
         {
-            int row = i / 4;
-            int col = i % 4;
+            int row = i / 4, col = i % 4;
             float x = startX + col * (cardW + cardGap);
             float cardY = y + row * (cardH + cardGap);
-
             DrawCharacterCard(x, cardY, cardW, cardH, characters[i], i);
         }
 
-        // 選択中キャラの説明
         float descY = y + ((characters.Count - 1) / 4 + 1) * (cardH + cardGap) + 10;
         var selected = characters[selectedCharIndex];
-        GUI.Label(new Rect(0, descY, Screen.width, 30), selected.Description, infoStyle);
+        UISkin.ShadowLabel(new Rect(0, descY, Screen.width, 30), selected.Description, infoStyle);
+        string statText = $"HP {selected.BaseMaxHp}   速度 {selected.BaseMoveSpeed:F1}   攻撃 {selected.BaseAttackMult:P0}   クリ {selected.BaseCritChance:P0}";
+        UISkin.ShadowLabel(new Rect(0, descY + 32, Screen.width, 25), statText, infoStyle);
 
-        // キャラ固有ステータス
-        float statY = descY + 35;
-        string statText = $"HP: {selected.BaseMaxHp}  速度: {selected.BaseMoveSpeed:F1}  攻撃: {selected.BaseAttackMult:P0}  クリ率: {selected.BaseCritChance:P0}";
-        GUI.Label(new Rect(0, statY, Screen.width, 25), statText, infoStyle);
-
-        // 戻るボタン
-        float btnW = 120f, btnH = 45f;
-        if (GUI.Button(new Rect(cx - btnW / 2f, Screen.height - 80, btnW, btnH), "Back", smallButtonStyle))
+        float btnW = 140f, btnH = 46f;
+        if (UISkin.Button2(new Rect(cx - btnW / 2f, Screen.height - 84, btnW, btnH), "戻る"))
         {
             CharacterSelection.SelectedCharacter = characters[selectedCharIndex].Type;
             menuState = MenuState.Main;
@@ -221,44 +168,25 @@ public class TitleScreen : MonoBehaviour
         bool isSelected = index == selectedCharIndex;
         bool isUnlocked = data.IsUnlockedByDefault || IsCharacterUnlocked(data.Type);
 
-        // カード背景
-        Color bgColor = isSelected ? new Color(0.3f, 0.5f, 0.7f, 0.8f) :
-                        isUnlocked ? new Color(0.2f, 0.2f, 0.25f, 0.8f) :
-                                     new Color(0.15f, 0.15f, 0.15f, 0.6f);
-        GUI.color = bgColor;
-        GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        if (isSelected) // 選択グロー
+            UISkin.Box(new Rect(x - 4, y - 4, w + 8, h + 8), UISkin.Accent);
 
-        // キャラクターアイコン（色付き円）
-        float iconSize = 60f;
+        Color bg = !isUnlocked ? new Color(0.12f, 0.12f, 0.14f, 0.85f)
+                 : isSelected  ? new Color(0.22f, 0.18f, 0.32f, 0.95f)
+                               : UISkin.Panel;
+        UISkin.Box(new Rect(x, y, w, h), bg);
+
+        // アイコン（角丸の色チップ）
+        float iconSize = 64f;
         float iconX = x + (w - iconSize) / 2f;
         float iconY = y + 20f;
+        UISkin.Box(new Rect(iconX, iconY, iconSize, iconSize), isUnlocked ? data.SpriteColor : new Color(0.3f, 0.3f, 0.3f));
 
-        if (isUnlocked)
-        {
-            GUI.color = data.SpriteColor;
-        }
-        else
-        {
-            GUI.color = new Color(0.3f, 0.3f, 0.3f);
-        }
-        GUI.DrawTexture(new Rect(iconX, iconY, iconSize, iconSize), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.ShadowLabel(new Rect(x, iconY + iconSize + 10, w, 26), data.Name, isUnlocked ? charNameStyle : lockedStyle);
 
-        // 名前
-        var nameStyle = isUnlocked ? charNameStyle : lockedStyle;
-        GUI.Label(new Rect(x, iconY + iconSize + 10, w, 25), data.Name, nameStyle);
-
-        // ロック表示
         if (!isUnlocked)
-        {
-            var lockStyle = new GUIStyle(infoStyle);
-            lockStyle.fontSize = 11;
-            lockStyle.normal.textColor = new Color(0.6f, 0.4f, 0.4f);
-            GUI.Label(new Rect(x, iconY + iconSize + 35, w, 40), data.UnlockCondition, lockStyle);
-        }
+            UISkin.ShadowLabel(new Rect(x + 8, iconY + iconSize + 38, w - 16, 44), data.UnlockCondition, lockHintStyle);
 
-        // クリック判定
         if (isUnlocked && GUI.Button(new Rect(x, y, w, h), "", GUIStyle.none))
         {
             selectedCharIndex = index;
@@ -266,24 +194,18 @@ public class TitleScreen : MonoBehaviour
         }
     }
 
+    // ───────────────────────────────────────
     void DrawStageSelect()
     {
-        // 背景オーバーレイ
-        GUI.color = new Color(0, 0, 0, 0.92f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.DimScreen(0.9f);
 
         float cx = Screen.width / 2f;
         float startY = Screen.height * 0.08f;
 
-        // タイトル
-        var headerStyle = new GUIStyle(titleStyle);
-        headerStyle.fontSize = 36;
-        GUI.Label(new Rect(0, startY, Screen.width, 50), "STAGE SELECT", headerStyle);
+        UISkin.ShadowLabel(new Rect(0, startY, Screen.width, 50), "STAGE SELECT", UISkin.Title);
 
-        float y = startY + 70;
-        float cardW = 180f, cardH = 140f;
-        float cardGap = 20f;
+        float y = startY + 76;
+        float cardW = 184f, cardH = 144f, cardGap = 20f;
         int cols = Mathf.Min(stages.Count, 4);
         float totalW = cols * cardW + (cols - 1) * cardGap;
         float startX = cx - totalW / 2f;
@@ -294,19 +216,14 @@ public class TitleScreen : MonoBehaviour
             DrawStageCard(x, y, cardW, cardH, stages[i], i);
         }
 
-        // 選択中ステージの説明
-        float descY = y + cardH + 20;
+        float descY = y + cardH + 22;
         var selected = stages[selectedStageIndex];
-        GUI.Label(new Rect(0, descY, Screen.width, 30), selected.Description, infoStyle);
+        UISkin.ShadowLabel(new Rect(0, descY, Screen.width, 30), selected.Description, infoStyle);
+        string diffText = $"難易度 x{selected.DifficultyMultiplier:F1}   出現率 x{selected.SpawnRateMultiplier:F1}";
+        UISkin.ShadowLabel(new Rect(0, descY + 32, Screen.width, 25), diffText, infoStyle);
 
-        // ステージ難易度
-        float diffY = descY + 35;
-        string diffText = $"難易度: x{selected.DifficultyMultiplier:F1}  出現率: x{selected.SpawnRateMultiplier:F1}";
-        GUI.Label(new Rect(0, diffY, Screen.width, 25), diffText, infoStyle);
-
-        // 戻るボタン
-        float btnW = 120f, btnH = 45f;
-        if (GUI.Button(new Rect(cx - btnW / 2f, Screen.height - 80, btnW, btnH), "Back", smallButtonStyle))
+        float btnW = 140f, btnH = 46f;
+        if (UISkin.Button2(new Rect(cx - btnW / 2f, Screen.height - 84, btnW, btnH), "戻る"))
         {
             StageSelection.SelectedStage = stages[selectedStageIndex].Type;
             menuState = MenuState.Main;
@@ -318,48 +235,26 @@ public class TitleScreen : MonoBehaviour
         bool isSelected = index == selectedStageIndex;
         bool isUnlocked = data.IsUnlockedByDefault || IsStageUnlocked(data.Type);
 
-        // カード背景（ステージの色を使用）
-        Color bgColor;
+        if (isSelected)
+            UISkin.Box(new Rect(x - 4, y - 4, w + 8, h + 8), UISkin.Accent);
+
+        Color bg;
         if (!isUnlocked)
-        {
-            bgColor = new Color(0.15f, 0.15f, 0.15f, 0.6f);
-        }
+            bg = new Color(0.12f, 0.12f, 0.14f, 0.85f);
         else if (isSelected)
-        {
-            bgColor = new Color(data.GroundColor.r + 0.2f, data.GroundColor.g + 0.2f, data.GroundColor.b + 0.2f, 0.9f);
-        }
+            bg = new Color(data.GroundColor.r + 0.18f, data.GroundColor.g + 0.18f, data.GroundColor.b + 0.18f, 0.95f);
         else
-        {
-            bgColor = new Color(data.GroundColor.r, data.GroundColor.g, data.GroundColor.b, 0.7f);
-        }
+            bg = new Color(data.GroundColor.r, data.GroundColor.g, data.GroundColor.b, 0.85f);
+        UISkin.Box(new Rect(x, y, w, h), bg);
 
-        GUI.color = bgColor;
-        GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.ShadowLabel(new Rect(x, y + 40, w, 30), data.Name, isUnlocked ? charNameStyle : lockedStyle);
 
-        // ステージ名
-        var nameStyle = isUnlocked ? charNameStyle : lockedStyle;
-        GUI.Label(new Rect(x, y + 40, w, 30), data.Name, nameStyle);
-
-        // クリア済みマーク
         if (SaveSystem.IsStageCleared(data.Type))
-        {
-            var clearStyle = new GUIStyle(infoStyle);
-            clearStyle.normal.textColor = new Color(0.3f, 0.9f, 0.3f);
-            clearStyle.fontSize = 12;
-            GUI.Label(new Rect(x, y + 70, w, 20), "CLEARED", clearStyle);
-        }
+            UISkin.ShadowLabel(new Rect(x, y + 74, w, 20), "CLEARED", clearedStyle);
 
-        // ロック表示
         if (!isUnlocked)
-        {
-            var lockStyle = new GUIStyle(infoStyle);
-            lockStyle.fontSize = 11;
-            lockStyle.normal.textColor = new Color(0.6f, 0.4f, 0.4f);
-            GUI.Label(new Rect(x, y + 75, w, 40), data.UnlockCondition, lockStyle);
-        }
+            UISkin.ShadowLabel(new Rect(x + 8, y + 78, w - 16, 44), data.UnlockCondition, lockHintStyle);
 
-        // クリック判定
         if (isUnlocked && GUI.Button(new Rect(x, y, w, h), "", GUIStyle.none))
         {
             selectedStageIndex = index;
@@ -379,67 +274,52 @@ public class TitleScreen : MonoBehaviour
         return UnlockManager.Instance?.IsUnlocked(id) ?? false;
     }
 
+    // ───────────────────────────────────────
     void DrawStatsScreen()
     {
-        // 背景オーバーレイ
-        GUI.color = new Color(0, 0, 0, 0.9f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.DimScreen(0.9f);
 
         float cx = Screen.width / 2f;
-        float panelW = Mathf.Min(400f, Screen.width - 40f);
+        float panelW = Mathf.Min(420f, Screen.width - 40f);
         float panelX = cx - panelW / 2f;
         float startY = Screen.height * 0.12f;
 
-        // タイトル
-        var headerStyle = new GUIStyle(titleStyle);
-        headerStyle.fontSize = 36;
-        GUI.Label(new Rect(0, startY, Screen.width, 50), "STATISTICS", headerStyle);
+        UISkin.ShadowLabel(new Rect(0, startY, Screen.width, 50), "STATISTICS", UISkin.Title);
 
-        float y = startY + 70;
+        float y = startY + 76;
         float rowH = 32f;
+
+        UISkin.PanelBox(new Rect(panelX - 16, y - 14, panelW + 32, rowH * 10 + 40), UISkin.PanelDeep);
 
         if (SaveSystem.Instance != null)
         {
             var stats = SaveSystem.Instance.Statistics;
-
             DrawStatRow(panelX, y, panelW, "Total Games", $"{stats.TotalGamesPlayed}"); y += rowH;
             DrawStatRow(panelX, y, panelW, "Total Play Time", FormatTime(stats.TotalPlayTime)); y += rowH;
             DrawStatRow(panelX, y, panelW, "Total Kills", $"{stats.TotalKills}"); y += rowH;
             DrawStatRow(panelX, y, panelW, "Total Gold", $"{stats.TotalGoldEarned}"); y += rowH;
-            DrawStatRow(panelX, y, panelW, "Stages Cleared", $"{stats.TotalStagesCleared}"); y += rowH + 15;
+            DrawStatRow(panelX, y, panelW, "Stages Cleared", $"{stats.TotalStagesCleared}"); y += rowH + 14;
 
-            // ベスト記録
-            var sectionStyle = new GUIStyle(statsStyle);
-            sectionStyle.fontStyle = FontStyle.Bold;
-            sectionStyle.normal.textColor = new Color(0.9f, 0.8f, 0.3f);
-            GUI.Label(new Rect(panelX, y, panelW, rowH), "Best Records", sectionStyle);
-            y += rowH + 5;
-
+            UISkin.ShadowLabel(new Rect(panelX, y, panelW, rowH), "Best Records", sectionStyle);
+            y += rowH + 4;
             DrawStatRow(panelX, y, panelW, "Best Survival", FormatTime(stats.BestSurvivalTime)); y += rowH;
             DrawStatRow(panelX, y, panelW, "Best Kills", $"{stats.BestKills}"); y += rowH;
             DrawStatRow(panelX, y, panelW, "Best Level", $"{stats.BestLevel}"); y += rowH;
         }
         else
         {
-            GUI.Label(new Rect(panelX, y, panelW, rowH), "No statistics yet", statsStyle);
+            UISkin.ShadowLabel(new Rect(panelX, y, panelW, rowH), "No statistics yet", statsStyle);
         }
 
-        // 戻るボタン
-        float btnW = 120f, btnH = 45f;
-        if (GUI.Button(new Rect(cx - btnW / 2f, Screen.height - 100, btnW, btnH), "Back", smallButtonStyle))
-        {
+        float btnW = 140f, btnH = 46f;
+        if (UISkin.Button2(new Rect(cx - btnW / 2f, Screen.height - 96, btnW, btnH), "戻る"))
             menuState = MenuState.Main;
-        }
     }
 
     void DrawStatRow(float x, float y, float width, string label, string value)
     {
-        GUI.Label(new Rect(x, y, width * 0.6f, 30), label, statsStyle);
-
-        var valueStyle = new GUIStyle(statsStyle);
-        valueStyle.alignment = TextAnchor.MiddleRight;
-        GUI.Label(new Rect(x + width * 0.6f, y, width * 0.4f, 30), value, valueStyle);
+        UISkin.ShadowLabel(new Rect(x, y, width * 0.6f, 30), label, statsStyle);
+        UISkin.ShadowLabel(new Rect(x + width * 0.4f, y, width * 0.6f, 30), value, statsValueStyle);
     }
 
     string FormatTime(float seconds)
@@ -448,70 +328,50 @@ public class TitleScreen : MonoBehaviour
         int hours = totalSeconds / 3600;
         int minutes = (totalSeconds % 3600) / 60;
         int secs = totalSeconds % 60;
-
-        if (hours > 0)
-            return $"{hours}h {minutes}m {secs}s";
-        else if (minutes > 0)
-            return $"{minutes}m {secs}s";
-        else
-            return $"{secs}s";
+        if (hours > 0)   return $"{hours}h {minutes}m {secs}s";
+        if (minutes > 0) return $"{minutes}m {secs}s";
+        return $"{secs}s";
     }
+
+    // ── ラベル系スタイル（背景なし＝GUI.skin既定フォントで日本語OK） ──
+    GUIStyle goldInfoStyle, lockHintStyle, clearedStyle, sectionStyle, statsValueStyle;
 
     void InitStyles()
     {
         titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 52,
-            alignment = TextAnchor.MiddleCenter,
-            fontStyle = FontStyle.Bold
-        };
-        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+        { fontSize = 52, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, wordWrap = true };
+        titleStyle.normal.textColor = UISkin.Gold;
 
-        subtitleStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 22,
-            alignment = TextAnchor.MiddleCenter
-        };
-        subtitleStyle.normal.textColor = new Color(0.75f, 0.75f, 0.75f);
+        subtitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
+        subtitleStyle.normal.textColor = UISkin.TextDim;
 
-        buttonStyle = new GUIStyle(GUI.skin.button)
-        {
-            fontSize = 30,
-            fontStyle = FontStyle.Bold
-        };
+        infoStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter };
+        infoStyle.normal.textColor = UISkin.TextDim;
 
-        smallButtonStyle = new GUIStyle(GUI.skin.button)
-        {
-            fontSize = 18,
-            alignment = TextAnchor.MiddleCenter
-        };
+        goldInfoStyle = new GUIStyle(infoStyle) { fontStyle = FontStyle.Bold };
+        goldInfoStyle.normal.textColor = UISkin.Gold;
 
-        infoStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 15,
-            alignment = TextAnchor.MiddleCenter
-        };
-        infoStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+        statsStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.MiddleLeft };
+        statsStyle.normal.textColor = UISkin.TextMain;
 
-        statsStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 18,
-            alignment = TextAnchor.MiddleLeft
-        };
-        statsStyle.normal.textColor = Color.white;
+        statsValueStyle = new GUIStyle(statsStyle) { alignment = TextAnchor.MiddleRight };
+
+        sectionStyle = new GUIStyle(statsStyle) { fontStyle = FontStyle.Bold };
+        sectionStyle.normal.textColor = UISkin.Gold;
 
         charNameStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 16,
-            alignment = TextAnchor.MiddleCenter,
-            fontStyle = FontStyle.Bold
-        };
-        charNameStyle.normal.textColor = Color.white;
+        { fontSize = 16, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+        charNameStyle.normal.textColor = UISkin.TextMain;
 
         lockedStyle = new GUIStyle(charNameStyle);
-        lockedStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+        lockedStyle.normal.textColor = new Color(0.55f, 0.55f, 0.6f);
 
-        selectedStyle = new GUIStyle(charNameStyle);
-        selectedStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
+        lockHintStyle = new GUIStyle(GUI.skin.label)
+        { fontSize = 11, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+        lockHintStyle.normal.textColor = new Color(0.7f, 0.5f, 0.5f);
+
+        clearedStyle = new GUIStyle(GUI.skin.label)
+        { fontSize = 12, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+        clearedStyle.normal.textColor = new Color(0.35f, 0.92f, 0.4f);
     }
 }

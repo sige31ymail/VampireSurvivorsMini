@@ -22,11 +22,16 @@ public static class UISkin
     static readonly Color BtnHover   = new Color(0.32f, 0.24f, 0.46f, 1f);
     static readonly Color BtnActive  = new Color(0.09f, 0.08f, 0.14f, 1f);
 
+    static readonly Color PriNormal  = new Color(0.45f, 0.26f, 0.70f, 1f);
+    static readonly Color PriHover   = new Color(0.62f, 0.38f, 0.92f, 1f);
+    static readonly Color PriActive  = new Color(0.30f, 0.18f, 0.48f, 1f);
+
     static bool ready;
     static Texture2D texWhite;       // 白い角丸（色はGUI.colorで乗算）
     static Texture2D texBtn, texBtnHover, texBtnActive;
+    static Texture2D texPri, texPriHover, texPriActive;
 
-    public static GUIStyle Header, Big, Label, LabelDim, GoldLabel, Button, Card, BarText;
+    public static GUIStyle Header, Big, Title, Label, LabelDim, GoldLabel, Button, Primary, Card, BarText;
     static GUIStyle whiteBox;
 
     public static void Init()
@@ -39,6 +44,9 @@ public static class UISkin
         texBtn       = BuildRounded(s, r, BtnNormal);
         texBtnHover  = BuildRounded(s, r, BtnHover);
         texBtnActive = BuildRounded(s, r, BtnActive);
+        texPri       = BuildRounded(s, r, PriNormal);
+        texPriHover  = BuildRounded(s, r, PriHover);
+        texPriActive = BuildRounded(s, r, PriActive);
         var border = new RectOffset(r, r, r, r);
 
         whiteBox = new GUIStyle { border = border };
@@ -51,6 +59,10 @@ public static class UISkin
         Big = new GUIStyle(GUI.skin.label)
         { fontSize = 54, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         Big.normal.textColor = TextMain;
+
+        Title = new GUIStyle(GUI.skin.label)
+        { fontSize = 52, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+        Title.normal.textColor = Gold;
 
         Label = new GUIStyle(GUI.skin.label) { fontSize = 18 };
         Label.normal.textColor = TextMain;
@@ -77,6 +89,11 @@ public static class UISkin
         Button.normal.background = texBtn;    Button.normal.textColor = TextMain;
         Button.hover.background  = texBtnHover; Button.hover.textColor = Color.white;
         Button.active.background = texBtnActive; Button.active.textColor = TextDim;
+
+        Primary = new GUIStyle(Button) { fontSize = 30 };
+        Primary.normal.background = texPri;     Primary.normal.textColor = Color.white;
+        Primary.hover.background  = texPriHover; Primary.hover.textColor = Color.white;
+        Primary.active.background = texPriActive; Primary.active.textColor = new Color(0.85f, 0.85f, 0.9f);
 
         Card = new GUIStyle(Button)
         { alignment = TextAnchor.MiddleLeft, fontSize = 19, padding = new RectOffset(20, 16, 10, 10), richText = true };
@@ -122,6 +139,9 @@ public static class UISkin
 
     /// <summary>角丸ボタン（ホバー/押し込みつき）。</summary>
     public static bool Button2(Rect r, string text) => GUI.Button(r, text, Button);
+
+    /// <summary>アクセント色のプライマリボタン（PLAY等）。</summary>
+    public static bool PrimaryButton2(Rect r, string text) => GUI.Button(r, text, Primary);
 
     /// <summary>角丸パネル。</summary>
     public static void PanelBox(Rect r, Color color) => Box(r, color);

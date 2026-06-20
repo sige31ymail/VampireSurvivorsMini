@@ -8,9 +8,13 @@ public class Background : MonoBehaviour
 {
     const float TileWorldSize = 2f;
 
+    // StageManager などが生成前に設定する。
+    public string resourceName = "Tiles/grass"; // 読み込むタイル画像（Resources以下、拡張子なし）
+    public Color  tint         = Color.white;    // タイルに掛ける色（暗くする等の微調整用）
+
     void Start()
     {
-        var tex = Resources.Load<Texture2D>("Tiles/grass");
+        var tex = Resources.Load<Texture2D>(resourceName);
         if (tex != null)
             BuildTiled(tex);
         else
@@ -29,6 +33,7 @@ public class Background : MonoBehaviour
 
         var sr = gameObject.AddComponent<SpriteRenderer>();
         sr.sprite       = sprite;
+        sr.color        = tint;
         sr.drawMode     = SpriteDrawMode.Tiled;
         sr.size         = new Vector2(52f, 52f); // 画面外までカバー
         sr.sortingOrder = -100;

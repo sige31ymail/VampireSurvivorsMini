@@ -5,6 +5,15 @@ public class PlayerVisuals : MonoBehaviour
 {
     void Start()
     {
+        // 手描きイラストがあれば1枚スプライトに差し替え、パーツ組み立てはスキップ
+        var art = SpriteLibrary.Get("Characters/player");
+        if (art != null)
+        {
+            // 親スケール0.6 × localScale2.6 ≒ 高さ1.56ワールド単位（パーツ版とほぼ同サイズ）
+            SpriteLibrary.Attach(transform, art, 2.6f, 11, "PlayerArt");
+            return;
+        }
+
         // ── ローブ ───────────────────────────
         Part("Body",    VampireSurvivorsMini.SquareSprite,  new Color(0.25f, 0.45f, 0.90f), new Vector3( 0.00f, -0.10f, 0), new Vector3(0.55f, 0.55f, 1), 10);
         Part("Hem",     VampireSurvivorsMini.SquareSprite,  new Color(0.20f, 0.38f, 0.80f), new Vector3( 0.00f, -0.38f, 0), new Vector3(0.65f, 0.18f, 1),  9);

@@ -194,6 +194,48 @@ public class StageManager : MonoBehaviour
 
     void CreateGroundTiles()
     {
+        // ステージに対応する地面タイル画像があれば、シームレスにタイリングした
+        // 1枚の背景（無限スクロール）を使う。重い41x41個の個別タイル生成を避けられる。
+        string tileResource = GroundTileForStage(CurrentStage.Type);
+        if (tileResource != null)
+        {
+            var groundGo = new GameObject("Ground");
+            var bg = groundGo.AddComponent<Background>();
+            bg.resourceName = tileResource;
+            // 地面色をうっすら掛けてステージごとの色味を残す（白に近いほど元のタイル色のまま）
+            bg.tint = Color.Lerp(Color.white, CurrentStage.GroundColor, 0.25f);
+            groundParent = groundGo.transform;
+            return;
+        }
+
+        // フォールバック：従来のコード生成タイル（地面画像が見つからない場合のみ）
+        CreateFallbackGroundTiles();
+    }
+
+    /// <summary>ステージタイプに対応する地面タイル画像のResourcesパス。無ければnull。</summary>
+    string GroundTileForStage(StageType type)
+    {
+        // 優先: ステージ専用の手描きタイル → 既存の汎用タイル
+        string[] candidates;
+        switch (type)
+        {
+            case StageType.Grassland: candidates = new[] { "Tiles/grassland", "Tiles/grass" }; break;
+            case StageType.Forest:    candidates = new[] { "Tiles/forest",    "Tiles/soil"  }; break;
+            case StageType.Graveyard: candidates = new[] { "Tiles/graveyard", "Tiles/stone" }; break;
+            case StageType.Castle:    candidates = new[] { "Tiles/castle",    "Tiles/floor" }; break;
+            default:                  candidates = new[] { "Tiles/grass" };                     break;
+        }
+
+        foreach (var c in candidates)
+        {
+            if (Resources.Load<Texture2D>(c) != null)
+                return c;
+        }
+        return null;
+    }
+
+    void CreateFallbackGroundTiles()
+    {
         groundParent = new GameObject("Ground").transform;
 
         // プレイヤー周辺の地面を生成

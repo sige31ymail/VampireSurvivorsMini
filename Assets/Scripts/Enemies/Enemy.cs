@@ -178,9 +178,22 @@ public class Enemy : MonoBehaviour
         }
 
         e.maxHp = e.hp;
-        e.baseColor = sr.color;
 
-        go.AddComponent<EnemyVisuals>().Build(type);
+        // 手描きイラストがあれば本体スプライトを差し替え、装飾パーツ(EnemyVisuals)は付けない。
+        // 無ければ従来どおり円/四角＋装飾パーツで組み立てる。
+        var art = SpriteLibrary.Get("Characters/Enemies/" + type.ToString().ToLowerInvariant());
+        if (art != null)
+        {
+            sr.sprite = art;
+            sr.color  = Color.white;                 // 色tintを解除して原画の色で描画
+            go.transform.rotation = Quaternion.identity; // Dasher等の回転を打ち消す
+        }
+        else
+        {
+            go.AddComponent<EnemyVisuals>().Build(type);
+        }
+
+        e.baseColor = sr.color;
 
         var srs = go.GetComponentsInChildren<SpriteRenderer>(true);
         e.allRenderers = srs;

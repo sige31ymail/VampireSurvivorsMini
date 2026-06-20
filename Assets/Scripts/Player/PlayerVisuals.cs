@@ -5,6 +5,9 @@ public class PlayerVisuals : MonoBehaviour
 {
     void Start()
     {
+        // 足元の接地シャドウ（手描き／コード生成どちらでも付ける）
+        GroundShadow.Attach(transform, 0.85f, 0.26f, -0.55f);
+
         // 手描きイラストがあれば1枚スプライトに差し替え、パーツ組み立てはスキップ
         var art = SpriteLibrary.Get("Characters/player");
         if (art != null)

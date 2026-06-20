@@ -201,6 +201,9 @@ public class Enemy : MonoBehaviour
         for (int i = 0; i < srs.Length; i++)
             e.allBaseColors[i] = srs[i].color;
 
+        // 足元シャドウ（フラッシュ対象に含めないよう allRenderers キャッシュ後に付与）
+        GroundShadow.Attach(go.transform, 1.05f, 0.32f, -0.52f);
+
         GameState.Enemies.Add(e);
         return e;
     }

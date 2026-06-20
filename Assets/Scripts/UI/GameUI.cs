@@ -4,85 +4,22 @@ using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem; // 新Input System使用時
 #endif
 
-/// <summary>OnGUIによる簡易UI（Canvas設定不要）</summary>
+/// <summary>OnGUIによるUI。見た目は UISkin（角丸/影/ホバー/配色）で統一。</summary>
 public class GameUI : MonoBehaviour
 {
     public Player player;
-    GUIStyle labelStyle, bigStyle, toastStyle, buttonStyle, resultStyle;
     bool isTransitioning;
 
     void OnGUI()
     {
-        if (labelStyle == null)
-        {
-            labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 18 };
-            labelStyle.normal.textColor = Color.white;
-            bigStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 48,
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
-            bigStyle.normal.textColor = Color.white;
-            toastStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 26,
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
-            toastStyle.normal.textColor = new Color(1f, 0.9f, 0.3f);
-            buttonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 18,
-                alignment = TextAnchor.MiddleCenter,
-                wordWrap = true
-            };
-            resultStyle = new GUIStyle(GUI.skin.label) { fontSize = 22 };
-            resultStyle.normal.textColor = Color.white;
-        }
-
+        UISkin.Init();
         if (player == null) return;
 
         // ポーズ中はHUDを描画しない（ポーズメニューが表示される）
         if (PauseMenu.IsPaused) return;
 
-        // HPバー
-        DrawBar(new Rect(20, 20, 240, 22),
-            (float)player.hp / player.maxHp,
-            new Color(0.9f, 0.25f, 0.25f), $"HP {player.hp}/{player.maxHp}");
+        DrawHud();
 
-        // XPバー
-        DrawBar(new Rect(20, 48, 240, 16),
-            (float)player.xp / player.xpToNext,
-            new Color(0.4f, 0.9f, 0.5f), $"Lv {player.level}");
-
-        // 経過時間、キル数、ゴールド
-        int t = (int)GameState.ElapsedTime;
-        GUI.Label(new Rect(20, 72, 300, 30),
-            $"{t / 60:00}:{t % 60:00}   Kills: {GameState.KillCount}", labelStyle);
-
-        // ゴールド表示
-        var goldStyle = new GUIStyle(labelStyle);
-        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        GUI.Label(new Rect(20, 96, 200, 26), $"Gold: {GoldCoin.SessionGold}", goldStyle);
-
-        // 所持武器一覧
-        float y = 124;
-        foreach (var w in player.weapons)
-        {
-            string max = w.IsMaxLevel ? " (MAX)" : "";
-            GUI.Label(new Rect(20, y, 320, 26), $"・{w.Name} Lv{w.level}{max}", labelStyle);
-            y += 24;
-        }
-
-        // レベルアップ獲得トースト（2.5秒間表示）
-        if (Time.time - player.lastUpgradeTime < 2.5f)
-        {
-            var rect = new Rect(0, Screen.height * 0.25f, Screen.width, 40);
-            GUI.Label(rect, player.lastUpgradeText, toastStyle);
-        }
-
-        // レベルアップ3択パネル
         if (player.currentOptions != null && !GameState.GameOver)
             DrawLevelUpPanel();
 
@@ -90,64 +27,128 @@ public class GameUI : MonoBehaviour
             DrawResultScreen();
     }
 
+    // ───────────────────────────────────────
+    //  HUD
+    // ───────────────────────────────────────
+    void DrawHud()
+    {
+        // 背景パネル（視認性）
+        float panelH = 122f + player.weapons.Count * 24f + 8f;
+        UISkin.PanelBox(new Rect(10f, 10f, 280f, panelH), UISkin.Panel);
+
+        // HP / XP バー
+        UISkin.Bar(new Rect(22f, 20f, 256f, 24f),
+            player.maxHp > 0 ? (float)player.hp / player.maxHp : 0f,
+            UISkin.Hp, $"HP {player.hp}/{player.maxHp}");
+        UISkin.Bar(new Rect(22f, 50f, 256f, 18f),
+            player.xpToNext > 0 ? (float)player.xp / player.xpToNext : 0f,
+            UISkin.Xp, $"Lv {player.level}");
+
+        // 時間・キル
+        int t = (int)GameState.ElapsedTime;
+        UISkin.ShadowLabel(new Rect(24f, 74f, 300f, 28f),
+            $"{t / 60:00}:{t % 60:00}   Kills {GameState.KillCount}", UISkin.Label);
+
+        // ゴールド
+        UISkin.ShadowLabel(new Rect(24f, 98f, 260f, 26f),
+            $"Gold {GoldCoin.SessionGold}", UISkin.GoldLabel);
+
+        // 所持武器一覧
+        float y = 124f;
+        foreach (var w in player.weapons)
+        {
+            string max = w.IsMaxLevel ? " (MAX)" : "";
+            UISkin.ShadowLabel(new Rect(24f, y, 260f, 24f),
+                $"・{w.Name} Lv{w.level}{max}", UISkin.LabelDim);
+            y += 24f;
+        }
+
+        // レベルアップ獲得トースト（2.5秒）
+        if (Time.time - player.lastUpgradeTime < 2.5f && !string.IsNullOrEmpty(player.lastUpgradeText))
+        {
+            UISkin.ShadowLabel(new Rect(0f, Screen.height * 0.24f, Screen.width, 44f),
+                player.lastUpgradeText, UISkin.Header);
+        }
+    }
+
+    // ───────────────────────────────────────
+    //  レベルアップ3択
+    // ───────────────────────────────────────
+    void DrawLevelUpPanel()
+    {
+        UISkin.DimScreen(0.72f);
+        UISkin.ShadowLabel(new Rect(0f, Screen.height * 0.13f, Screen.width, 64f), "LEVEL UP!", UISkin.Big);
+
+        float panelW = Mathf.Min(480f, Screen.width - 40f);
+        float cardH = 88f;
+        float gap = 14f;
+        float x = (Screen.width - panelW) / 2f;
+        float startY = Screen.height * 0.28f;
+
+        for (int i = 0; i < player.currentOptions.Count; i++)
+        {
+            var opt = player.currentOptions[i];
+            var rect = new Rect(x, startY + i * (cardH + gap), panelW, cardH);
+            string text = $"<b>[{i + 1}]  {opt.title}</b>\n<color=#B9B9C8>{opt.desc}</color>";
+            if (GUI.Button(rect, text, UISkin.Card))
+            {
+                player.ChooseOption(i);
+                return;
+            }
+        }
+
+        int key = GetNumberKeyPressed();
+        if (key >= 0 && key < player.currentOptions.Count) player.ChooseOption(key);
+    }
+
+    // ───────────────────────────────────────
+    //  リザルト
+    // ───────────────────────────────────────
     void DrawResultScreen()
     {
         if (isTransitioning) return;
 
-        // 背景オーバーレイ
-        GUI.color = new Color(0, 0, 0, 0.85f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.DimScreen(0.85f);
 
         float cx = Screen.width / 2f;
         float cy = Screen.height / 2f;
 
-        // ヘッダー
-        GUI.Label(new Rect(0, cy - 210, Screen.width, 70), "GAME OVER", bigStyle);
+        UISkin.ShadowLabel(new Rect(0f, cy - 220f, Screen.width, 70f), "GAME OVER", UISkin.Big);
 
-        // ステータスパネル
-        float panelW = Mathf.Min(360f, Screen.width - 40f);
+        float panelW = Mathf.Min(380f, Screen.width - 40f);
         float lineH = 34f;
-        float panelH = 136f + player.weapons.Count * lineH + 20f;
+        float panelH = 150f + player.weapons.Count * lineH + 24f;
         float panelX = cx - panelW / 2f;
-        float panelY = cy - 140f;
+        float panelY = cy - 150f;
 
-        GUI.color = new Color(1f, 1f, 1f, 0.08f);
-        GUI.DrawTexture(new Rect(panelX, panelY, panelW, panelH), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        UISkin.PanelBox(new Rect(panelX, panelY, panelW, panelH), UISkin.PanelDeep);
 
         int t = (int)GameState.ElapsedTime;
-        float lx = panelX + 20f;
-        float ly = panelY + 12f;
-        GUI.Label(new Rect(lx, ly,      panelW - 20, lineH), $"生存時間     {t / 60:00}:{t % 60:00}", resultStyle);
-        GUI.Label(new Rect(lx, ly + 34, panelW - 20, lineH), $"撃破数       {GameState.KillCount}", resultStyle);
-        GUI.Label(new Rect(lx, ly + 68, panelW - 20, lineH), $"到達レベル   {player.level}", resultStyle);
-
-        // 獲得ゴールド
-        var goldResultStyle = new GUIStyle(resultStyle);
-        goldResultStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        GUI.Label(new Rect(lx, ly + 102, panelW - 20, lineH), $"獲得ゴールド +{GoldCoin.SessionGold}", goldResultStyle);
+        float lx = panelX + 22f;
+        float lw = panelW - 44f;
+        float ly = panelY + 16f;
+        UISkin.ShadowLabel(new Rect(lx, ly,        lw, lineH), $"生存時間     {t / 60:00}:{t % 60:00}", UISkin.Label);
+        UISkin.ShadowLabel(new Rect(lx, ly + 34f,  lw, lineH), $"撃破数       {GameState.KillCount}", UISkin.Label);
+        UISkin.ShadowLabel(new Rect(lx, ly + 68f,  lw, lineH), $"到達レベル   {player.level}", UISkin.Label);
+        UISkin.ShadowLabel(new Rect(lx, ly + 102f, lw, lineH), $"獲得ゴールド +{GoldCoin.SessionGold}", UISkin.GoldLabel);
 
         for (int i = 0; i < player.weapons.Count; i++)
         {
             var w = player.weapons[i];
             string prefix = i == 0 ? "武器         " : "             ";
-            GUI.Label(new Rect(lx, ly + 136 + i * lineH, panelW - 20, lineH),
-                prefix + $"{w.Name} Lv{w.level}", resultStyle);
+            UISkin.ShadowLabel(new Rect(lx, ly + 146f + i * lineH, lw, lineH),
+                prefix + $"{w.Name} Lv{w.level}", UISkin.LabelDim);
         }
 
-        // ボタン
-        float btnW = 160f, btnH = 52f, btnGap = 20f;
-        float btnY = panelY + panelH + 24f;
-        float btnX = cx - (btnW * 2 + btnGap) / 2f;
+        float btnW = 168f, btnH = 52f, btnGap = 18f;
+        float btnY = panelY + panelH + 22f;
+        float btnX = cx - (btnW * 2f + btnGap) / 2f;
 
-        if (GUI.Button(new Rect(btnX,              btnY, btnW, btnH), "もう一度 [R]", buttonStyle))
+        if (UISkin.Button2(new Rect(btnX, btnY, btnW, btnH), "もう一度 [R]"))
             Transition(SceneManager.GetActiveScene().buildIndex);
-
-        if (GUI.Button(new Rect(btnX + btnW + btnGap, btnY, btnW, btnH), "タイトルへ", buttonStyle))
+        if (UISkin.Button2(new Rect(btnX + btnW + btnGap, btnY, btnW, btnH), "タイトルへ"))
             Transition("TitleScene");
 
-        // Rキーでも即リスタート
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
         if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
 #else
@@ -156,65 +157,7 @@ public class GameUI : MonoBehaviour
             Transition(SceneManager.GetActiveScene().buildIndex);
     }
 
-    void Transition(string sceneName)
-    {
-        isTransitioning = true;
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(sceneName);
-    }
-
-    void Transition(int buildIndex)
-    {
-        isTransitioning = true;
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(buildIndex);
-    }
-
-    void DrawBar(Rect rect, float ratio, Color color, string text)
-    {
-        GUI.color = new Color(0, 0, 0, 0.6f);
-        GUI.DrawTexture(rect, Texture2D.whiteTexture);
-        GUI.color = color;
-        var fill = rect;
-        fill.width *= Mathf.Clamp01(ratio);
-        GUI.DrawTexture(fill, Texture2D.whiteTexture);
-        GUI.color = Color.white;
-        GUI.Label(new Rect(rect.x + 6, rect.y, rect.width, rect.height), text, labelStyle);
-    }
-
-    /// <summary>レベルアップ時の3択パネル（クリック or 1/2/3キーで選択）</summary>
-    void DrawLevelUpPanel()
-    {
-        // 画面全体を暗くする
-        GUI.color = new Color(0, 0, 0, 0.7f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
-
-        GUI.Label(new Rect(0, Screen.height * 0.15f, Screen.width, 60),
-            "LEVEL UP!", bigStyle);
-
-        float panelW = Mathf.Min(420f, Screen.width - 40f);
-        float panelH = 80f;
-        float gap = 14f;
-        float x = (Screen.width - panelW) / 2f;
-        float startY = Screen.height * 0.30f;
-
-        for (int i = 0; i < player.currentOptions.Count; i++)
-        {
-            var opt = player.currentOptions[i];
-            var rect = new Rect(x, startY + i * (panelH + gap), panelW, panelH);
-            if (GUI.Button(rect, $"[{i + 1}] {opt.title}\n{opt.desc}", buttonStyle))
-            {
-                player.ChooseOption(i);
-                return; // 選択後はパネルが消えるので即終了
-            }
-        }
-
-        // キーボード(1/2/3)でも選択可能
-        int key = GetNumberKeyPressed();
-        if (key >= 0) player.ChooseOption(key);
-    }
-
+    // ───────────────────────────────────────
     int GetNumberKeyPressed()
     {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
@@ -229,5 +172,19 @@ public class GameUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) return 2;
 #endif
         return -1;
+    }
+
+    void Transition(string sceneName)
+    {
+        isTransitioning = true;
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
+    }
+
+    void Transition(int buildIndex)
+    {
+        isTransitioning = true;
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(buildIndex);
     }
 }

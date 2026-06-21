@@ -97,7 +97,8 @@ public class AxeProjectile : MonoBehaviour, IPoolable
         rotation += 720f * Time.deltaTime;
         transform.rotation = Quaternion.Euler(0, 0, rotation);
 
-        foreach (var e in GameState.Enemies)
+        // TakeDamageで敵が死ぬとGameState.Enemiesから除去されるため、スナップショットを回す
+        foreach (var e in GameState.Enemies.ToArray())
         {
             if (e == null) continue;
             if ((e.transform.position - transform.position).sqrMagnitude < 0.5f * 0.5f)

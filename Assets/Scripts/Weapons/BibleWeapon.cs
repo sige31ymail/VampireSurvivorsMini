@@ -71,7 +71,8 @@ public class BibleWeapon : Weapon
         {
             if (!bible.gameObject.activeSelf) continue;
 
-            foreach (var e in GameState.Enemies)
+            // TakeDamageで敵が死ぬとGameState.Enemiesから除去されるため、スナップショットを回す
+            foreach (var e in GameState.Enemies.ToArray())
             {
                 if (e == null) continue;
                 if (hitCooldowns.ContainsKey(e)) continue;

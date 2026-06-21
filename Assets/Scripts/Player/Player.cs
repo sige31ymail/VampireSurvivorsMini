@@ -12,6 +12,9 @@ public class Player : MonoBehaviour
     public int maxHp = 100;
     public int hp;
 
+    // アリーナの障害物・境界との当たり半径（見た目より小さめで操作感を優先）
+    const float CollisionRadius = 0.4f;
+
     [Header("成長")]
     public int level = 1;
     public int xp;
@@ -161,7 +164,9 @@ public class Player : MonoBehaviour
         float y = Input.GetAxisRaw("Vertical");
 #endif
         var dir = new Vector3(x, y, 0f).normalized;
-        transform.position += dir * moveSpeed * Time.deltaTime;
+        var desired = transform.position + dir * moveSpeed * Time.deltaTime;
+        // アリーナの境界・障害物を考慮（敵は制限しない＝プレイヤーのみ）
+        transform.position = Arena.ClampMovement(transform.position, desired, CollisionRadius);
     }
 
     public void TakeDamage(int damage)

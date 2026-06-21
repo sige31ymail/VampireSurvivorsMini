@@ -190,6 +190,16 @@ public class StageManager : MonoBehaviour
 
         // 地面タイルを生成（シンプルなグリッド）
         CreateGroundTiles();
+
+        // 無限チャンク・ストリーミング（障害物・プロップ）を起動
+        StartChunkStreaming();
+    }
+
+    // ── 無限チャンク・ストリーミング起動 ─────────────
+    void StartChunkStreaming()
+    {
+        var go = new GameObject("ChunkManager");
+        go.AddComponent<ChunkManager>().Init(CurrentStage);
     }
 
     void CreateGroundTiles()

@@ -193,6 +193,9 @@ public class StageManager : MonoBehaviour
 
         // 無限チャンク・ストリーミング（障害物・プロップ）を起動
         StartChunkStreaming();
+
+        // バイオーム別の空気感（ヴィネット・暗所のスポットライト・背景トーン）
+        new GameObject("StageAtmosphere").AddComponent<StageAtmosphere>().Init(CurrentStage);
     }
 
     // ── 無限チャンク・ストリーミング起動 ─────────────

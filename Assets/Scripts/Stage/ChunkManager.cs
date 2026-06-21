@@ -180,6 +180,8 @@ public class ChunkManager : MonoBehaviour
         var go = new GameObject("Prop");
         go.transform.SetParent(parent);
         go.AddComponent<SpriteRenderer>();
+        // 足元の接地影（子として付くのでプロップのスケールに追従。再利用時も維持される）
+        GroundShadow.Attach(go.transform, 0.8f, 0.28f, -0.42f, 0.32f);
         return go;
     }
 

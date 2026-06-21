@@ -13,6 +13,7 @@ public class ScreenVignette : MonoBehaviour
     [Range(0f, 1f)] public float intensity = 0.6f; // 四隅の暗さ
 
     static Sprite vignetteSprite;
+    SpriteRenderer sr;
     float lastAspect = -1f;
 
     void Start()
@@ -23,7 +24,7 @@ public class ScreenVignette : MonoBehaviour
         transform.SetParent(cam.transform, false);
         transform.localPosition = new Vector3(0f, 0f, 1f); // カメラ前方（クリップ内）
 
-        var sr = gameObject.AddComponent<SpriteRenderer>();
+        sr = gameObject.AddComponent<SpriteRenderer>();
         sr.sprite = GetSprite();
         sr.color = new Color(1f, 1f, 1f, intensity);
         sr.sortingOrder = 1000; // 全ワールドスプライトより上（IMGUIのUIより下）
@@ -37,6 +38,13 @@ public class ScreenVignette : MonoBehaviour
         var cam = Camera.main;
         if (cam != null && !Mathf.Approximately(cam.aspect, lastAspect))
             Resize(cam);
+
+        // intensity を後から変更（StageAtmosphere 等）しても反映する
+        if (sr != null)
+        {
+            var c = sr.color;
+            if (!Mathf.Approximately(c.a, intensity)) { c.a = intensity; sr.color = c; }
+        }
     }
 
     void Resize(Camera cam)

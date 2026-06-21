@@ -17,6 +17,7 @@ public class ChunkManager : MonoBehaviour
         public long Key;
         public int Cx, Cy;
         public readonly List<GameObject> Props = new List<GameObject>();
+        public readonly List<GameObject> Ground = new List<GameObject>();
         public readonly List<Arena.Obstacle> Obstacles = new List<Arena.Obstacle>();
     }
 
@@ -27,15 +28,19 @@ public class ChunkManager : MonoBehaviour
     const float CenterClear = 4.5f;  // ワールド原点（開始地点）周辺は障害物なし
     const int   MinPerChunk = 4;
     const int   MaxPerChunk = 8;
+    const float GroundTileSize = 4f; // 地面タイル1枚のワールドサイズ（ChunkSize を割り切ること）
 
     Transform player;
     Transform parent;
     int stageSeed;
     (Color color, bool round, float min, float max) theme;
     Texture2D[] artTextures;
+    Sprite[] groundSprites; // Ground/<biome>/ のタイル（無ければ null）
+    int groundBaseIndex;    // 地面に使う基本タイルのインデックス
 
     readonly Dictionary<long, Chunk> active = new Dictionary<long, Chunk>();
     readonly Stack<GameObject> pool = new Stack<GameObject>();
+    readonly Stack<GameObject> groundPool = new Stack<GameObject>();
     readonly Dictionary<Texture2D, Sprite> spriteCache = new Dictionary<Texture2D, Sprite>();
     readonly List<long> tmpRemove = new List<long>();
 
@@ -50,6 +55,9 @@ public class ChunkManager : MonoBehaviour
         stageSeed = (int)stage.Type * 911 + 12345;
         theme = ObstacleTheme(stage.Type);
         artTextures = Resources.LoadAll<Texture2D>("Props/" + BiomeFolder(stage.Type));
+        var groundTexs = Resources.LoadAll<Texture2D>("Ground/" + BiomeFolder(stage.Type));
+        groundSprites = BuildGroundSprites(groundTexs);
+        groundBaseIndex = PickBaseIndex(groundTexs, BiomeFolder(stage.Type));
     }
 
     void Update()
@@ -131,6 +139,7 @@ public class ChunkManager : MonoBehaviour
             SpawnProp(chunk, pos, scale, rng);
         }
 
+        LayGround(chunk, cx, cy);
         Arena.SetChunk(key, chunk.Obstacles);
         return chunk;
     }
@@ -168,6 +177,12 @@ public class ChunkManager : MonoBehaviour
             pool.Push(chunk.Props[i]);
         }
         chunk.Props.Clear();
+        for (int i = 0; i < chunk.Ground.Count; i++)
+        {
+            chunk.Ground[i].SetActive(false);
+            groundPool.Push(chunk.Ground[i]);
+        }
+        chunk.Ground.Clear();
     }
 
     GameObject GetPooled()
@@ -194,6 +209,63 @@ public class ChunkManager : MonoBehaviour
             new Vector2(0.5f, 0.5f), tex.width); // ppu = width → 横幅1ワールド単位
         spriteCache[tex] = s;
         return s;
+    }
+
+    /// <summary>チャンクに地面タイルのグリッドを敷く（Ground/&lt;biome&gt;/ の変種を決定論で選択）。</summary>
+    void LayGround(Chunk chunk, int cx, int cy)
+    {
+        if (groundSprites == null || groundSprites.Length == 0) return;
+
+        int n = Mathf.RoundToInt(ChunkSize / GroundTileSize);
+        float baseX = cx * ChunkSize, baseY = cy * ChunkSize;
+
+        // 地面は単一の基本タイルで統一する。明るさの違う変種を混ぜるとグリッド（市松）が
+        // 目立つため。変化は Decor レイヤー（散布する透過小物）で付ける方針。
+        var sprite = groundSprites[groundBaseIndex];
+        for (int gx = 0; gx < n; gx++)
+        for (int gy = 0; gy < n; gy++)
+        {
+            var go = GetGroundTile();
+            go.transform.position = new Vector3(
+                baseX + (gx + 0.5f) * GroundTileSize,
+                baseY + (gy + 0.5f) * GroundTileSize, 0f);
+            go.GetComponent<SpriteRenderer>().sprite = sprite;
+            go.SetActive(true);
+            chunk.Ground.Add(go);
+        }
+    }
+
+    GameObject GetGroundTile()
+    {
+        if (groundPool.Count > 0) return groundPool.Pop();
+        var go = new GameObject("GroundTile");
+        go.transform.SetParent(parent);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sortingOrder = -50; // Background(-100)より上、影(-5)・障害物(0)より下
+        return go;
+    }
+
+    /// <summary>地面テクスチャを「1枚=GroundTileSize ワールド単位」のスプライトに変換。</summary>
+    static Sprite[] BuildGroundSprites(Texture2D[] texs)
+    {
+        if (texs == null || texs.Length == 0) return null;
+        var arr = new Sprite[texs.Length];
+        for (int i = 0; i < texs.Length; i++)
+        {
+            texs[i].filterMode = FilterMode.Point; // 同変種の隣接を継ぎ目なく
+            arr[i] = Sprite.Create(texs[i], new Rect(0, 0, texs[i].width, texs[i].height),
+                new Vector2(0.5f, 0.5f), texs[i].width / GroundTileSize);
+        }
+        return arr;
+    }
+
+    /// <summary>基本タイルのインデックス。biome名と一致 → 無印(_なし) → 先頭、の優先で選ぶ。</summary>
+    static int PickBaseIndex(Texture2D[] texs, string folder)
+    {
+        if (texs == null || texs.Length == 0) return 0;
+        for (int i = 0; i < texs.Length; i++) if (texs[i].name == folder) return i;
+        for (int i = 0; i < texs.Length; i++) if (!texs[i].name.Contains("_")) return i;
+        return 0;
     }
 
     static long Key(int x, int y) => ((long)(uint)x << 32) | (uint)y;

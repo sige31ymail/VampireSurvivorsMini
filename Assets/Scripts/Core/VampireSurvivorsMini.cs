@@ -81,7 +81,9 @@ public class VampireSurvivorsMini : MonoBehaviour
 
         // === Background（StageManagerが設定するので不要だが互換性のため残す） ===
         // new GameObject("Background").AddComponent<Background>();
-        new GameObject("AmbientFx").AddComponent<AmbientFx>();
+        // AmbientFx（道・家・木のコード生成装飾）はチープなため無効化。
+        // 装飾は ChunkManager の Decor レイヤー（アート）で置き換える予定。
+        // new GameObject("AmbientFx").AddComponent<AmbientFx>();
 
         // === Screen Vignette（四隅を暗くして空気感を出す） ===
         new GameObject("ScreenVignette").AddComponent<ScreenVignette>();
